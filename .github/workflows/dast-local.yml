@@ -27,7 +27,7 @@ jobs:
       DB_PASSWORD: ci_only_password
       PORT_WEB: 3000
       PORT_API: 3001
-      API_KEY: ci_only_api_key
+      API_KEY: ${{ secrets.API_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
