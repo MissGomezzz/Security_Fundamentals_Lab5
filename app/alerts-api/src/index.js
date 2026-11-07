@@ -41,6 +41,28 @@ app.use(express.json({ limit: '100kb' }));
 app.use(morgan('combined'));
 app.use(requestLogger);
 
+function requireApiKey(req, res, next) {
+  const expected = process.env.API_KEY;
+
+  if (!expected) {
+    return res.status(503).json({ error: 'api_key_not_configured' });
+  }
+
+  const received = req.get('x-api-key') || '';
+
+  if (
+    received.length !== expected.length ||
+    !crypto.timingSafeEqual(
+      Buffer.from(received),
+      Buffer.from(expected)
+    )
+  ) {
+    return res.status(401).json({ error: 'unauthorized' });
+  }
+
+  return next();
+}
+
 function parsePositiveInteger(value, fallback, maximum) {
   const parsed = Number.parseInt(value, 10);
   if (!Number.isInteger(parsed) || parsed < 0) return fallback;
