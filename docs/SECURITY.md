@@ -2,9 +2,8 @@
 
 ## 1. Alcance autorizado
 - Repositorio: [URL]
-- Rama evaluada y commit: [rama / SHA]
-- URL de staging propio (si aplica): [URL]
-- Responsable / autorización: [nombre / fecha]
+- Rama evaluada y commit: security/lab5-fdsi / 09d876b4ca5e5c8db6af2053852e88e2487763f4
+- Responsable / autorización: María Belén Quintero / Viernes 6 de noviembre del 2026
 - Fuera de alcance: producción, sistemas de terceros, datos reales y pruebas destructivas.
 
 ## 2. Línea base y herramientas
