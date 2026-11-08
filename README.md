@@ -443,7 +443,6 @@ Se integró un pipeline de seguridad en GitHub y se recorrió el ciclo detectar,
 | [`docs/CHECKLIST_PR.md`](docs/CHECKLIST_PR.md) | Checklist de seguridad del PR |
 | [`docs/README_INTEGRACION.md`](docs/README_INTEGRACION.md) | Cómo se integró y se reproduce el pipeline |
 | [`evidence/lab5/README.md`](evidence/lab5/README.md) | Índice de capturas y lista de evidencias pendientes |
-| [`evidence/express5/README.md`](evidence/express5/README.md) | Validación de la migración a Express 5 (prueba comparativa Express 4 vs 5) |
 | [`risk-register.md`](risk-register.md) | Registro de riesgos, incluidos H13–H21 de este laboratorio |
 
 ## Resultados
@@ -458,7 +457,7 @@ Se integró un pipeline de seguridad en GitHub y se recorrió el ciclo detectar,
 | `npm audit` | 3 vulnerabilidades | 0 |
 | OWASP ZAP (informe inicial) | 0 High, 2 Medium, 6 Low, 2 Info (cabeceras del frontend) | Sin reescaneo; ver F-09 |
 
-Los checks usan `|| true` (Semgrep) y `-I` (ZAP): un check verde **no** significa aplicación segura. Riesgos residuales y pendientes (cabeceras del frontend, `X-Powered-By` en el frontend, `trust proxy`, commit y PR de la migración a Express 5 y triage de los otros PR de Dependabot) en el [informe final](docs/INFORME_FINAL.md#6-riesgos-residuales-y-decisiones).
+Los checks usan `|| true` (Semgrep) y `-I` (ZAP): un check verde **no** significa aplicación segura. Riesgos residuales y pendientes (cabeceras del frontend, `X-Powered-By` en el frontend, `trust proxy`, triage de los 5 PR de Dependabot) en el [informe final](docs/INFORME_FINAL.md#6-riesgos-residuales-y-decisiones).
 
 ## Pipeline
 

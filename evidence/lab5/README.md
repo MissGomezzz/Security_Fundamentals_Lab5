@@ -9,8 +9,7 @@
 | `alertas_iniciales_dependatbot.png` | 5 alertas abiertas de Dependabot (1 Critical, 1 High, 3 Moderate) | Dependabot, antes | `SECURITY.md` §2.6 |
 | `alertas_fixed_dependatbot.png` | 0 abiertas, 5 cerradas "Fixed" | Dependabot, después | `SECURITY.md` §2.6 |
 | `npm_audit_y_outdated.png` | `npm audit`: 3 vulnerabilidades (1 moderate, 1 high, 1 critical). `npm outdated` sin salida | SCA, antes | `SECURITY.md` §2.6 |
-| `dependabot_prs.png` | 6 PR abiertos por Dependabot (#9 a #14): 4 de GitHub Actions y 2 de npm (`dotenv`, `express` 4 → 5, este con 4/5 checks) | Dependabot (F-08 verificado) | `SECURITY.md` §2.6, `PULL_REQUESTS.md` |
-| `dependabot_pr14_zap_fallido.png` | Check fallido del PR #14: `zap-local`, paso *Esperar a la app*, `curl` no conecta a `127.0.0.1:3000` | Dependabot / DAST | `SECURITY.md` §2.6, `PULL_REQUESTS.md` |
+| `dependabot_prs_abiertos.png` | 5 PR abiertos por Dependabot (#9 a #13): 4 de GitHub Actions y 1 de npm (`dotenv`), todos con 5/5 checks | Dependabot (F-08 verificado) | `SECURITY.md` §2.6, `PULL_REQUESTS.md` |
 | `npm_audit_after.png` | `npm install` y `npm audit`: 0 vulnerabilidades; `npm test`: 5/5 | SCA, después | `SECURITY.md` §2.6 |
 | `hallazgos_CodeQL.png` | 3 alertas High (missing rate limiting) en el PR #6, commit `40b58fa` | CodeQL, antes | `SECURITY.md` §2.2 |
 | `hallazgos_fixed_CodeQL.png` | `main`: 0 abiertas, 7 cerradas "fixed" | CodeQL, después | `SECURITY.md` §2.2 |
@@ -42,7 +41,7 @@ Los archivos `.sarif` que el equipo tiene en otra carpeta **no son necesarios** 
 
 ## Dudas por resolver al revisar las capturas
 - En las capturas posteriores a la corrección, la insignia de *Security and quality* muestra **1** (antes 12 = 7 alertas de CodeQL + 5 de Dependabot). Ver qué es ese elemento restante en la pestaña Security (Overview) y documentarlo; no es ni Dependabot ni code scanning, que están en 0.
-- Hacer commit y PR de la migración a Express 5 (el PR #14 falló porque Express 5 no admite `app.get('*')`; ya corregido y validado en local, evidencia en [`../express5/`](../express5/README.md)) y hacer triage de los otros 5 PR de Dependabot.
+- Hacer triage de los 5 PR abiertos por Dependabot (#9 a #13).
 
 ## Reglas para agregar evidencia
 - Tachar o recortar cualquier token, clave de API o dato personal antes de guardar la captura (la clave del pentest ya está tachada).

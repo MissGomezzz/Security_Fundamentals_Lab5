@@ -24,7 +24,7 @@
 | Semgrep 1.182.1 (`p/owasp-top-ten`, `p/secrets`) | SAST | 2 nov 2026 (workflow en PR #4/#5; JSON local en `09d876b`) | **Antes: 9 hallazgos WARNING. Después: 4.** Se corrigieron los 5 de acciones sin SHA fijo; quedan 4 de Nginx (`request-host-used`). 0 errores de escaneo, 56 archivos analizados. | [`semgrep_before.json`](../evidence/SAST/semgrep_before.json), [`semgrep_after.json`](../evidence/SAST/semgrep_after.json), [`resumen.py`](../evidence/SAST/resumen.py) |
 | CodeQL (Default setup: `javascript-typescript`, `actions`) | SAST | 6 nov 2026 (PR #6) y 8 nov 2026 (`main`) | PR #6: **3 alertas High** (`js/missing-rate-limiting`). `main`: **7 alertas High** detectadas, **0 abiertas / 7 cerradas como "fixed"** tras los PR #6 y #7. | [`hallazgos_CodeQL.png`](../evidence/lab5/hallazgos_CodeQL.png), [`hallazgos_fixed_CodeQL.png`](../evidence/lab5/hallazgos_fixed_CodeQL.png) |
 | Gitleaks (`gitleaks-action` fijada por SHA, `fetch-depth: 0`) | Secretos | 28 oct 2026 (workflow) y cada PR | **Sin hallazgos.** Resumen del job: *No leaks detected* (run #18, commit `0bb491d`, 9 s). También en verde en el PR #6. Verificación adicional: `.env` nunca fue versionado (`git log --all -- .env` vacío; está en `.gitignore`). | [`gitleaks_log.png`](../evidence/lab5/gitleaks_log.png), [`all_workflows_pass_before_merge.png`](../evidence/lab5/all_workflows_pass_before_merge.png) |
-| Dependabot (alertas de seguridad) y `npm audit` | SCA | 6–8 nov 2026 | **Antes: 5 alertas abiertas** (1 Critical, 1 High, 3 Moderate), todas transitivas. **Después: 0 abiertas / 5 cerradas "Fixed"** y `npm audit`: *found 0 vulnerabilities*. | [`alertas_iniciales_dependatbot.png`](../evidence/lab5/alertas_iniciales_dependatbot.png), [`alertas_fixed_dependatbot.png`](../evidence/lab5/alertas_fixed_dependatbot.png), [`npm_audit_y_outdated.png`](../evidence/lab5/npm_audit_y_outdated.png), [`npm_audit_after.png`](../evidence/lab5/npm_audit_after.png), [`dependabot_prs.png`](../evidence/lab5/dependabot_prs.png) (6 PR de actualización abiertos por el bot) |
+| Dependabot (alertas de seguridad) y `npm audit` | SCA | 6–8 nov 2026 | **Antes: 5 alertas abiertas** (1 Critical, 1 High, 3 Moderate), todas transitivas. **Después: 0 abiertas / 5 cerradas "Fixed"** y `npm audit`: *found 0 vulnerabilities*. | [`alertas_iniciales_dependatbot.png`](../evidence/lab5/alertas_iniciales_dependatbot.png), [`alertas_fixed_dependatbot.png`](../evidence/lab5/alertas_fixed_dependatbot.png), [`npm_audit_y_outdated.png`](../evidence/lab5/npm_audit_y_outdated.png), [`npm_audit_after.png`](../evidence/lab5/npm_audit_after.png), [`dependabot_prs_abiertos.png`](../evidence/lab5/dependabot_prs_abiertos.png) (5 PR de actualización abiertos por el bot) |
 | OWASP ZAP 2.17.0 Baseline (`zap-baseline.py`, modo pasivo) | DAST pasivo | 6 nov 2026, 17:32 UTC (informe inicial) | **0 High, 2 Medium, 6 Low, 2 Informational** (10 tipos de alerta) sobre 5 recursos del frontend (`127.0.0.1:3000`). Todas son de cabeceras HTTP; ninguna alcanzó `/api`. Ver §2.4. | [`zap-report.html`](../evidence/ZAP/zap-report.html), [`zap-report.json`](../evidence/ZAP/zap-report.json), [`zap.yaml`](../evidence/ZAP/zap.yaml) |
 | Pruebas de regresión (`node --test`) | Prueba funcional de seguridad | 7 nov 2026 | 7 nov: 4/4 pruebas pasan (sin X-Powered-By, 401 sin clave, 401 con clave incorrecta, 401 en `/api/audit`). 8 nov: **5/5** con la prueba de rate limiting añadida en `38cf99b` (61 solicitudes, las últimas responden 429). | [`security_test.png`](../evidence/lab5/security_test.png), [`security_test_5_pruebas.png`](../evidence/lab5/security_test_5_pruebas.png), [`security.test.js`](../app/alerts-api/test/security.test.js) |
 
@@ -137,7 +137,7 @@ También `express` 4.22.2 → 4.22.3. La copia anidada `body-parser/node_modules
 
 > **Hallazgo de proceso (F-08):** el archivo de configuración se llamaba `.github/dependatbot.yml` (errata). GitHub solo lee `.github/dependabot.yml`, así que **las actualizaciones de versión programadas (semanal, `npm` y `github-actions`) no estaban activas**. Las *alertas* de seguridad sí funcionaban porque no dependen de ese archivo. **Corrección:** el archivo se renombró a `.github/dependabot.yml` (commit `555a33e`, contenido sin cambios).
 
-**Verificación de F-08: Dependabot ya abre PR de actualización.** Tras el renombrado, el bot abrió **6 Pull Requests** (#9 a #14) pocos minutos después, lo que confirma que ahora lee la configuración. Todos tienen las etiquetas `dependencies` y `javascript` o `github_actions` según el ecosistema:
+**Verificación de F-08: Dependabot ya abre PR de actualización.** Tras el renombrado, el bot abrió **5 Pull Requests** (#9 a #13) pocos minutos después, lo que confirma que ahora lee la configuración. Todos tienen la etiqueta `dependencies` y `javascript` o `github_actions` según el ecosistema, y los 5 pasan sus 5 checks:
 
 | PR | Actualización | Ecosistema | Checks |
 |---|---|---|---|
@@ -146,23 +146,14 @@ También `express` 4.22.2 → 4.22.3. La copia anidada `body-parser/node_modules
 | #11 | `actions/setup-python` 5.6.0 → 7.1.0 | github_actions | 5/5 |
 | #12 | `actions/setup-node` 4 → 7 | github_actions | 5/5 |
 | #13 | `dotenv` 16.6.1 → 18.0.9 | npm | 5/5 |
-| #14 | `express` 4.22.3 → 5.3.0 | npm | **4/5: falla el check DAST (ZAP)**. Causa y migración en el texto siguiente |
 
-![Pull requests abiertos por Dependabot (#9 a #14)](../evidence/lab5/dependabot_prs.png)
+![Pull requests abiertos por Dependabot (#9 a #13)](../evidence/lab5/dependabot_prs_abiertos.png)
 
-*Captura del listado de PR abiertos (6 abiertos, 8 cerrados). Los 6 PR del bot siguen **abiertos, sin fusionar**.*
+*Captura del listado de PR abiertos del repositorio: 5 abiertos, todos del bot `dependabot[bot]`, con 5/5 checks.*
 
 Lectura de estos PR:
 - Los cuatro de `github_actions` actualizan acciones que el repositorio referencia por tag (`@v4`) y por SHA fijado (`checkout`, `setup-python` y `upload-artifact` en `seguridad-estatica.yml`). Dependabot es la vía prevista para mantener al día las acciones fijadas por SHA (F-04) sin volver a tags mutables. Antes de fusionarlos conviene revisar las notas de cada salto de versión mayor (4 → 7).
-- Los dos de `npm` son **saltos de versión mayor**. `dotenv` pasa sus 5 checks.
-- **`express` 4 → 5 (#14) falla el check *DAST pasivo - app local en runner / zap-local*.** El job falla en el paso *Esperar a la app* (1 min 1 s): `curl` intenta 30 veces conectarse a `127.0.0.1:3000` y recibe `Failed to connect ... Could not connect to server`, es decir, **el frontend nunca empezó a escuchar**. Los pasos anteriores (`npm ci`, `npm run seed`, *Arrancar API y frontend*) terminan bien porque los servicios se lanzan en segundo plano y no reportan su caída. Como la app no arranca, ZAP no llega a ejecutarse y el paso de subida avisa *No files were found with the provided path: reports/*. El "#15" del título de la captura es el número de la ejecución del workflow, no del PR.
-- **Causa (reproducida en la aplicación real):** `web-frontend/server.js` usaba `app.get('*', ...)` como comodín. Express 5 usa `path-to-regexp` v8, que ya no admite `*` sin nombre. Al instalar Express 5.3.0 sin tocar el código, `node app/web-frontend/server.js` termina con `PathError [TypeError]: Missing parameter name at index 1: *` en el arranque. El log del runner no se ve en la captura, pero el síntoma de CI coincide exactamente.
-- **Resolución: migración a Express 5, validada.** Se cambió `app.get('*', ...)` por `app.get('/{*splat}', ...)` en `web-frontend/server.js` y se actualizó `express` a `^5.3.0` en `alerts-api` y `web-frontend` (más `package-lock.json`). Una prueba de humo end-to-end de 31 comprobaciones, ejecutada con el mismo script sobre Express 4.22.3 y sobre 5.3.0 contra una PostgreSQL desechable, dio **resultados idénticos en 28 y 3 líneas distintas, todas explicadas** (filas acumuladas de `audit_log` y el `Content-Type` de los estáticos). Auth por API key, CORS, rate limiting (429), proxy del frontend y comodín SPA se comportan igual. `npm test`: 5/5; `npm audit`: 0 vulnerabilidades. Detalle y cómo repetirla: [`evidence/express5/`](../evidence/express5/README.md).
-- **Estado:** cambio hecho en la copia de trabajo, **pendiente de commit y PR**. El PR #14 de Dependabot queda redundante cuando esto se fusione (o puede actualizarse con este cambio).
-- **Lo que la migración no arregla:** JSON malformado en la API sigue devolviendo `500` en lugar de `400` (comportamiento previo del manejador de errores), y `X-Powered-By` sigue presente en el frontend (F-06).
-
-![Check fallido del PR #14: zap-local no pudo conectar a 127.0.0.1:3000](../evidence/lab5/dependabot_pr14_zap_fallido.png)
-
+- El de `npm` (`dotenv` 16 → 18) también es un salto de versión mayor.
 - Estas actualizaciones **no son parte de las correcciones del laboratorio**: son una consecuencia de activar F-08 y están pendientes de triage.
 
 ## 3. Hallazgos y gestión
@@ -176,7 +167,7 @@ Lectura de estos PR:
 | F-05 | A05 Misconfiguration (Semgrep `request-host-used`) | `$host` usado en `proxy_set_header Host` | Bajo | `nginx/*.conf` | — | **Abierto / riesgo aceptado** |
 | F-06 | A05 / CWE-497 (ZAP 10037) | Cabecera `X-Powered-By: Express` | Bajo | `alerts-api/src/index.js`, `web-frontend/server.js` | `app.disable('x-powered-by')` solo en la API (`70dd82a`) + prueba | **Corregido en la API; abierto en el frontend** |
 | F-07 | A04 / CWE-770 | Posible rate limiting global por IP del proxy | Medio | `alerts-api`, `web-frontend` | — | **Abierto** (hipótesis sin validar) |
-| F-08 | A06 / proceso | Config de Dependabot con nombre de archivo erróneo | Bajo | `.github/dependabot.yml` | Archivo renombrado (`555a33e`). Dependabot abrió 6 PR (#9 a #14) | **Corregido y verificado** |
+| F-08 | A06 / proceso | Config de Dependabot con nombre de archivo erróneo | Bajo | `.github/dependabot.yml` | Archivo renombrado (`555a33e`). Dependabot abrió 5 PR (#9 a #13) | **Corregido y verificado** |
 | F-09 | A05 / CWE-693 y CWE-1021 (ZAP) | Frontend sin CSP, anti-clickjacking, `nosniff` ni otras cabeceras de seguridad | Medio | `app/web-frontend/server.js`, `nginx/*.conf` | — | **Abierto** |
 
 Detalle técnico completo de cada ID: [`REPORTE_HALLAZGOS.md`](REPORTE_HALLAZGOS.md).
