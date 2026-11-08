@@ -17,6 +17,7 @@
 | `all_workflows_pass_before_merge.png` | PR #6 abierto con 7/7 checks | PR de remediación | `SECURITY.md` §2.5, `PULL_REQUESTS.md` |
 | `pr7_ya_fucionado.png` | PR #7 "fix the last one vulnerability detected by CodeQL", Merged, 8 checks | PR de remediación | `PULL_REQUESTS.md` |
 | `bodyJson_pentest.png` | `body.json` con `{"status":"closed"}` | Pentest | `REPORTE_HALLAZGOS.md` |
+| `pentest_before.png` | `PATCH` sin clave y con clave incorrecta: `200 OK`, con `X-Powered-By: Express` (8 nov 22:55 GMT) | Pentest, antes | `SECURITY.md` §5, `REPORTE_HALLAZGOS.md` |
 | `resultados_pentests_controlados.png` | `/health` 200; PATCH sin clave 401; clave incorrecta 401; clave válida 200 (clave tachada) | Pentest | `SECURITY.md` §5 |
 | `security_test.png` | `npm test -w alerts-api`: 4/4 pruebas pasan (7 nov) | Antes/después | `SECURITY.md` §2 |
 | `security_test_5_pruebas.png` | `npm test`: 5/5, con la prueba de rate limiting (401 y luego 429) | Antes/después | `SECURITY.md` §2 |
@@ -33,11 +34,11 @@ Otras evidencias de Lab 5 en el repositorio:
 | 1 | Semgrep | `../SAST/*.json`, `resumen.py` | Completo. Falta captura del job (opcional) |
 | 2 | CodeQL | `hallazgos_CodeQL.png`, `hallazgos_fixed_CodeQL.png` | Completo |
 | 3 | Gitleaks / Secret Scanning | `gitleaks_log.png` | Completo (Gitleaks) |
-| 4 | Dependabot | `alertas_*`, `npm_audit_*`, `dependabot_prs_abiertos.png` | Completo |
-| 5 | Reporte OWASP ZAP | `../ZAP/zap-report.*`, `zap.yaml` | Informe inicial completo; falta el "después" |
-| 6 | Pentest controlado | `bodyJson_pentest.png`, `resultados_pentests_controlados.png` | Completo; falta el "antes" |
+| 4 | Dependabot | `alertas_*`, `npm_audit_*`, `dependabot_prs_abiertos.png` | Completo (PR fusionados el 8 nov; captura del merge opcional) |
+| 5 | Reporte OWASP ZAP | `../ZAP/zap-report.*`, `zap.yaml` | Informe inicial completo; falta el "después" (cabeceras ya corregidas en el código) |
+| 6 | Pentest controlado | `bodyJson_pentest.png`, `pentest_before.png`, `resultados_pentests_controlados.png` | Completo |
 | 7 | Reporte de vulnerabilidades | `docs/REPORTE_HALLAZGOS.md` | Completo |
-| 8 | Antes/después | `docs/SECURITY.md` §4 | Completo salvo ZAP y pentest |
+| 8 | Antes/después | `docs/SECURITY.md` §4 | Completo salvo el informe ZAP "después" |
 | 9 | PR de integración | `docs/PULL_REQUESTS.md` (#4, #5) | Sin capturas por decisión del equipo |
 | 10 | PR de remediación | `all_workflows_pass_before_merge.png`, `pr7_ya_fucionado.png` | Completo; falta captura del #6 fusionado (opcional) |
 | 11 | Informe final | `docs/INFORME_FINAL.md` | Completo |
@@ -49,16 +50,20 @@ Otras evidencias de Lab 5 en el repositorio:
 | **Decidido por el equipo** | Capturas de los PR #4 y #5 (`pr4_integracion_merged.png`, `pr5_ajuste_sha_merged.png`) | No se agregarán. Documentado en `PULL_REQUESTS.md` con commits y merges. Los campos están listos (comentados) por si el evaluador las exige |
 | Media | Capturas de `npm audit`, `npm test` y del run de CI sobre `main` @ `4f31229` con Express 5 (`express5_audit_tests.png`, `express5_ci_run.png`) | La migración se hizo sin PR; hoy solo hay verificación local (8 nov, 0 vulnerabilidades, 5/5). La captura `npm_audit_after.png` es de Express 4 |
 | Baja | Captura del PR #6 ya fusionado (`pr6_remediacion_merged.png`) | Solo existe la captura previa al merge. El PR #7 sí tiene captura post-merge |
-| Baja | Pentest "antes": la misma solicitud P-02 sobre el commit `09d876b` (`pentest_before.png`) | Hoy se deduce del diff de `70dd82a` |
+| Baja | `git rev-parse HEAD` de la copia usada en `pentest_before.png` | La captura no muestra el commit evaluado |
 | Baja | Captura del job Semgrep y del artefacto `resultado-semgrep` (`semgrep_job_actions.png`) | Los JSON ya están en `evidence/SAST/` |
 | Baja | Resumen del informe ZAP (`zap_resumen.png`) | El informe completo ya está archivado |
-| Después de corregir F-06 / F-09 | Informe ZAP posterior (`evidence/ZAP/after/`) | Hoy solo existe el informe inicial |
+| Alta (tras abrir el PR) | Informe ZAP posterior (`evidence/ZAP/after/`) | F-06 y F-09 ya están corregidos en el código (sin commit). El workflow apunta a `:3001` (API) desde `e075efb`; para el frontend hay que escanear `:3000` |
+| Alta (tras abrir el PR) | Capturas del PR de remediación de F-04, F-06 y F-09 (`pr_headers_sha_checks.png`, `pr_headers_sha_merged.png`) | Los cambios están sin commit |
+| Media | `npm test` con 11 pruebas y `curl -i` del frontend (`headers_tests_11.png`, `headers_after_frontend.png`) | Evidencia local de la remediación del 8 nov |
+| Media | `semgrep_final.json` en `evidence/SAST/` (nombre propio, sin sobrescribir) | Esperado: sin los 5 de F-04 ni los 37 de `evidence/` |
+| Baja | Captura de los 5 PR de Dependabot fusionados (`dependabot_prs_fusionados.png`) | Se fusionaron el 8 nov; `dependabot_prs_abiertos.png` es la captura anterior al merge |
 
 Los archivos `.sarif` que el equipo tiene en otra carpeta **no son necesarios** para ningún entregable: Semgrep y CodeQL ya están respaldados por los JSON y las capturas. Se pueden agregar en `evidence/SAST/` como complemento si se desea, sin referenciarlos.
 
 ## Dudas por resolver al revisar las capturas
 - En las capturas posteriores a la corrección, la insignia de *Security and quality* muestra **1** (antes 12 = 7 alertas de CodeQL + 5 de Dependabot). Ver qué es ese elemento restante en la pestaña Security (Overview) y documentarlo; no es ni Dependabot ni code scanning, que están en 0.
-- Hacer triage de los 5 PR abiertos por Dependabot (#9 a #13); parten del estado anterior a Express 5 y pueden requerir rebase.
+- Los 5 PR de Dependabot (#9 a #13) ya se fusionaron (8 nov, 17:46 a 17:51).
 - Las capturas `dependabot_pr14_zap_fallido.png` y `dependabot_prs.png` se eliminaron en `4f31229`; por el nombre de la primera, parecía mostrar un check de ZAP fallido en un PR de Dependabot (#14), que ya no está documentado. No se revisó su contenido; si ese fallo fue real, conviene registrarlo.
 
 ## Reglas para agregar evidencia

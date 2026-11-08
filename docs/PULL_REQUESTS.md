@@ -87,7 +87,7 @@ El cambio de Express no pasó por revisión de PR. Se verificó localmente (`npm
 
 ## Pull Requests automáticos de Dependabot (#9 a #13)
 
-Tras renombrar `dependatbot.yml` a `dependabot.yml` (F-08, commit `555a33e`), Dependabot empezó a abrir PR de actualización de versión. Son PR de **mantenimiento**, no de remediación de los hallazgos del laboratorio, y a la fecha de la captura siguen **abiertos y sin fusionar**. Son además la evidencia de que F-08 quedó resuelto.
+Tras renombrar `dependatbot.yml` a `dependabot.yml` (F-08, commit `555a33e`), Dependabot empezó a abrir PR de actualización de versión. Son PR de **mantenimiento**, no de remediación de los hallazgos del laboratorio, y a la fecha de la captura estaban **abiertos y sin fusionar**. Son además la evidencia de que F-08 quedó resuelto. **Se fusionaron el 8 nov 2026 entre las 17:46 y las 17:51** (ver más abajo).
 
 | PR | Título | Etiquetas | Checks |
 |---|---|---|---|
@@ -99,10 +99,46 @@ Tras renombrar `dependatbot.yml` a `dependabot.yml` (F-08, commit `555a33e`), De
 
 ![PR abiertos por Dependabot](../evidence/lab5/dependabot_prs_abiertos.png)
 
-**Decisión pendiente.** Todos son saltos de versión mayor: leer las notas de cambio y probar antes de fusionar. Los de `github_actions` son la vía natural para mantener las acciones fijadas por SHA (F-04).
+**Triage y merge (8 nov 2026).** Se revisaron y fusionaron los cinco con merge commit, con los 5 checks en verde de cada uno:
+
+| PR | Merge | Commit del merge |
+|---|---|---|
+| #9 `actions/checkout` 4 → 7 | 17:46 | `cad2d70` |
+| #10 `actions/upload-artifact` 4 → 7 | 17:47 | `fb69c0f` |
+| #13 `dotenv` 16.6.1 → 18.0.9 | 17:48 | `b2ebfd0` |
+| #12 `actions/setup-node` 4 → 7 | 17:50 | `64b6148` |
+| #11 `actions/setup-python` 5.6.0 → 7.1.0 | 17:51 | `95af340` |
+
+Después del merge, `npm audit` marca 0 vulnerabilidades y las pruebas pasan. Dependabot respetó los SHA ya fijados, pero los pasos que estaban sin SHA quedaron en `@v7` (mutable); la remediación de abajo los fija.
+
+> ⚠️ **PENDIENTE: captura de los 5 PR fusionados** (`is:pr is:merged author:app/dependabot`). Ruta: `evidence/lab5/dependabot_prs_fusionados.png`.
+>
+> <!-- ![PR de Dependabot fusionados](../evidence/lab5/dependabot_prs_fusionados.png) -->
+
+## PR de remediación pendiente de abrir: F-04, F-06 y F-09
+
+Los cambios de `SECURITY.md` §2.8 están en el árbol de trabajo, sobre `main` @ `747bf61`, sin commit. Para convertirlos en el tercer PR de remediación y que queden revisados y con CI:
+
+1. Crear la rama (por ejemplo `security/lab5-headers-sha`), hacer commit y abrir el PR hacia `main`.
+2. Esperar los checks (Semgrep, Gitleaks, pruebas de regresión con 11 pruebas, CodeQL y ZAP) y capturarlos.
+3. Descargar el informe ZAP y el JSON de Semgrep del run y guardarlos con nombre propio (`evidence/ZAP/after/`, `evidence/SAST/semgrep_final.json`).
+
+**Archivos del cambio:** `.github/workflows/seguridad-estatica.yml`, `.github/workflows/dast-local.yml`, `.semgrepignore`, `app/web-frontend/server.js`, `app/web-frontend/package.json`, `app/web-frontend/test/security-headers.test.js` y `package-lock.json` (nueva dependencia `helmet` 8.3.0).
+
+**Descripción sugerida:**
+
+> Cierra la parte abierta de F-04, F-06 y F-09. Fija por SHA las acciones restantes de los dos workflows (Dependabot las había dejado en `@v7`), añade `helmet` al frontend con una CSP sin `unsafe-inline`, anti-clickjacking, COEP/COOP/CORP y Permissions-Policy, desactiva `X-Powered-By` en el frontend (hallazgos de ZAP del 6 nov), añade 6 pruebas de regresión para esas cabeceras y hace que el job `pruebas` ejecute las de todos los workspaces. Añade `.semgrepignore` para excluir `evidence/` (37 falsos positivos). HSTS queda fuera hasta tener HTTPS (Lab 4). Evidencia en `docs/SECURITY.md` §2.8. Verificado en local: 11/11 pruebas, `npm audit` 0.
+
+> ⚠️ **PENDIENTE: capturas de este PR** (página con checks y estado *Merged*). Rutas: `evidence/lab5/pr_headers_sha_checks.png` y `evidence/lab5/pr_headers_sha_merged.png`.
+>
+> <!-- ![Checks del PR de cabeceras y SHA](../evidence/lab5/pr_headers_sha_checks.png) -->
+> <!-- ![PR de cabeceras y SHA fusionado](../evidence/lab5/pr_headers_sha_merged.png) -->
+
+**Antes de abrirlo:** `dast-local.yml` apunta a `http://127.0.0.1:3001` (API) desde `e075efb`. Si se quiere que el ZAP de este PR demuestre las cabeceras del frontend, cambiar el objetivo a `:3000` (o añadir una segunda ejecución).
 
 ## Pendientes derivados que deberían ir en un PR nuevo
-1. Hacer triage de los 5 PR abiertos por Dependabot (#9 a #13), ver la sección anterior. Antes de fusionarlos, tener en cuenta que `main` ya cambió (Express 5, lockfile): los PR de Dependabot parten del estado anterior y pueden requerir rebase.
-2. Fijar por SHA las acciones restantes de `seguridad-estatica.yml` (job `pruebas`) y `dast-local.yml` (F-04).
+1. ~~Triage de los 5 PR de Dependabot (#9 a #13)~~: hecho el 8 nov, ver la sección anterior.
+2. ~~Fijar por SHA las acciones restantes (F-04)~~, ~~cabeceras del frontend (F-09)~~ y ~~`X-Powered-By` del frontend (F-06)~~: **hechos en el árbol de trabajo, falta el commit y el PR** (ver la sección siguiente).
 3. Configurar `trust proxy` y validar el rate limiting detrás de Nginx (F-07).
-4. Corregir las cabeceras del frontend (F-09) y `X-Powered-By` en el frontend (F-06), y volver a ejecutar ZAP para tener el informe "después".
+4. Volver a ejecutar ZAP sobre el frontend (`:3000`) para tener el informe "después", y Semgrep para el JSON final.
+5. Añadir `cooldown` a `dependabot.yml`.

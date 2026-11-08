@@ -1,0 +1,5 @@
+# Semgrep lee este archivo automáticamente desde la raíz del repositorio.
+# Evidencia archivada (informes ZAP, JSON de Semgrep, copias de configuraciones
+# anteriores): no es código de la aplicación y produce falsos positivos
+# (p. ej. 37 plaintext-http-link en evidence/ZAP/zap-report.html).
+evidence/

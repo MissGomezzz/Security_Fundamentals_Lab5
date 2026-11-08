@@ -1,10 +1,12 @@
 const path = require('node:path');
 const http = require('node:http');
 const express = require('express');
+const helmet = require('helmet');
 const { rateLimit } = require('express-rate-limit');
 const morgan = require('morgan');
 
 const app = express();
+app.disable('x-powered-by');
 const port = Number(process.env.PORT_WEB || 3000);
 const publicDirectory = path.join(__dirname, 'public');
 
@@ -25,6 +27,35 @@ function proxyApiRequest(req, res, next) {
 }
 
 app.use(morgan('combined'));
+// Cabeceras de seguridad (F-06 y F-09). El frontend solo carga /app.js y /styles.css
+// propios y llama a /api del mismo origen, por eso la CSP no permite nada externo.
+// HSTS queda desactivado: el despliegue aún es HTTP (se habilitará con TLS, Lab 4).
+app.use(helmet({
+  contentSecurityPolicy: {
+    useDefaults: false,
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'"],
+      imgSrc: ["'self'", 'data:'],
+      connectSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+      frameAncestors: ["'none'"]
+    }
+  },
+  crossOriginEmbedderPolicy: { policy: 'require-corp' },
+  crossOriginOpenerPolicy: { policy: 'same-origin' },
+  crossOriginResourcePolicy: { policy: 'same-origin' },
+  frameguard: { action: 'deny' },
+  referrerPolicy: { policy: 'no-referrer' },
+  strictTransportSecurity: false
+}));
+app.use((req, res, next) => {
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
+  next();
+});
 app.use(rateLimit({
   windowMs: 60 * 1000,
   limit: 60,

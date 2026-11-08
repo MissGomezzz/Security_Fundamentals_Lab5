@@ -7,7 +7,7 @@
 **Fecha:** pruebas del 6 al 8 de noviembre de 2026 (autorización: viernes 6 de noviembre de 2026).
 
 ## Resumen ejecutivo
-Se integró un pipeline de seguridad (Semgrep, CodeQL, Gitleaks, Dependabot, ZAP baseline y pruebas de regresión) y se recorrió el ciclo completo: detectar, validar, corregir y reescanear. Se registraron **9 hallazgos**: **6 corregidos y verificados** (F-01, F-02, F-03, F-04 en los workflows de Semgrep/Gitleaks, F-06 en la API y F-08) y 3 abiertos (F-05 aceptado, F-07 sin validar y F-09 por cabeceras del frontend). F-04 y F-06 conservan una parte abierta.
+Se integró un pipeline de seguridad (Semgrep, CodeQL, Gitleaks, Dependabot, ZAP baseline y pruebas de regresión) y se recorrió el ciclo completo: detectar, validar, corregir y reescanear. Se registraron **9 hallazgos**: **6 corregidos y verificados** (F-01, F-02, F-03, F-04 en los workflows de Semgrep/Gitleaks, F-06 en la API y F-08) y 3 abiertos (F-05 aceptado, F-07 sin validar y F-09 por cabeceras del frontend). F-04 y F-06 conservaban una parte abierta. El 8 nov se corrigieron en el código esas partes y F-09 (`helmet`, SHA en las acciones restantes; ver `SECURITY.md` §2.8), **con verificación local y pendientes de commit, PR, CI y ZAP**; hasta entonces se cuentan como corregidas en el código, no como verificadas.
 
 Los tres riesgos principales fueron:
 1. **Dependencias vulnerables (F-02, crítico).** `proxy-addr` (IP spoofing, Critical), `body-parser` (DoS, High) y `qs` (3 DoS/bypass, Moderate) llegaban de forma transitiva con Express. Importa porque `proxy-addr` decide qué IP se considera la del cliente, base de cualquier control por IP. **Corregido** actualizando el lockfile; Dependabot pasó de 5 alertas abiertas a 0.
@@ -26,12 +26,12 @@ Identificación del alcance → SAST (Semgrep, CodeQL) → detección de secreto
 | F-01 | Rutas con acceso a base de datos sin rate limiting | CodeQL | Alta | Corregido |
 | F-02 | Dependencias transitivas vulnerables | Dependabot / `npm audit` | Crítica | Corregido |
 | F-03 | Endpoints de escritura y auditoría sin autenticación | Revisión + pentest | Alta | Corregido |
-| F-04 | Acciones de GitHub con tag mutable | Semgrep | Media | Corregido parcial |
+| F-04 | Acciones de GitHub con tag mutable | Semgrep | Media | Corregido en el código (pendiente de commit y reescaneo) |
 | F-05 | `$host` no validado en `proxy_set_header Host` | Semgrep | Baja | Abierto (aceptado) |
-| F-06 | Cabecera `X-Powered-By` | Revisión, prueba y ZAP | Baja | Corregido en la API; abierto en el frontend |
+| F-06 | Cabecera `X-Powered-By` | Revisión, prueba y ZAP | Baja | Corregido en la API (verificado); en el frontend corregido en el código (pendiente de commit y ZAP) |
 | F-07 | Rate limiting posiblemente compartido por IP del proxy | Revisión de código | Media | Abierto (sin validar) |
 | F-08 | Configuración de Dependabot con nombre de archivo erróneo | Revisión de proceso | Baja | Corregido y verificado |
-| F-09 | Frontend sin CSP, anti-clickjacking, `nosniff` ni cabeceras Cross-Origin | OWASP ZAP | Media | Abierto |
+| F-09 | Frontend sin CSP, anti-clickjacking, `nosniff` ni cabeceras Cross-Origin | OWASP ZAP | Media | Corregido en el código (pendiente de commit y ZAP) |
 
 ---
 
@@ -83,7 +83,7 @@ Identificación del alcance → SAST (Semgrep, CodeQL) → detección de secreto
 - **Corrección:** `70dd82a` — middleware `requireApiKey` que lee `API_KEY` del entorno, devuelve `503 api_key_not_configured` si no está definida (falla cerrada), y compara con `crypto.timingSafeEqual` tras verificar la longitud; respuesta genérica `401 {"error":"unauthorized"}`. PR #6.
 - **Resultado del reescaneo:** pruebas de regresión 4/4 en verde.
   ![Pruebas de regresión](../evidence/lab5/security_test.png)
-- **Límites:** (a) una única clave compartida, sin rotación ni identidad por usuario; (b) `GET /api/alerts` y `GET /api/alerts/:id` siguen públicos por diseño; (c) falta la captura "antes" (ver §5 de `SECURITY.md`); (d) no hay prueba positiva automatizada (clave válida → 200).
+- **Límites:** (a) una única clave compartida, sin rotación ni identidad por usuario; (b) `GET /api/alerts` y `GET /api/alerts/:id` siguen públicos por diseño; (c) la captura "antes" no muestra el commit evaluado (ver §5 de `SECURITY.md`); (d) no hay prueba positiva automatizada (clave válida → 200).
 
 ## Hallazgo F-04 — Acciones de GitHub con tag mutable
 - **Título:** Acciones de terceros referenciadas por tag o rama (`@v4`).
@@ -96,6 +96,8 @@ Identificación del alcance → SAST (Semgrep, CodeQL) → detección de secreto
 - **Resultado del reescaneo (tras el PR #5):** 0 hallazgos de esta regla en [`semgrep_after_pr5.json`](../evidence/SAST/semgrep_after_pr5.json) (9 → 4 en total).
 - **Reescaneo posterior (8 nov 2026, [`semgrep_after.json`](../evidence/SAST/semgrep_after.json)):** la regla vuelve a aparecer **5 veces**, tal como se anticipó: `seguridad-estatica.yml` líneas 45 y 46 (job `pruebas`) y `dast-local.yml` líneas 32, 33 y 56. Confirma que la corrección es parcial.
 - **Corrección parcial — pendiente:** el commit posterior `70dd82a` añadió el job `pruebas` con `actions/checkout@v4` y `actions/setup-node@v4` (líneas 45–46), y `dast-local.yml` conserva `@v4` en tres pasos (líneas 32, 33, 56). Son referencias mutables que no estaban en el escaneo posterior al PR #5 y que el reescaneo del 8 nov confirmó. Recomendación: fijarlas a SHA y reejecutar Semgrep.
+- **Corrección del resto (8 nov 2026, sin commit aún):** las cinco referencias (`seguridad-estatica.yml` 45 y 46; `dast-local.yml` 32, 33 y 56) se fijaron a SHA. Para entonces Dependabot había actualizado esas líneas de `@v4` a `@v7` (merge de #9, #10 y #12), por lo que el estado previo era `@v7`, igualmente mutable. SHA usados: `checkout` `3d3c42e5…` (v7.0.1), `setup-node` `949feb24…` (v7.1.0), `upload-artifact` `cf430e03…` (v7.0.2).
+- **Resultado:** pendiente de reescaneo de Semgrep (no instalado localmente); la comprobación por `grep "uses:"` muestra que todas las acciones de terceros de los dos workflows quedan con SHA de 40 caracteres y el tag como comentario. Dependabot (`github-actions`) puede seguir actualizándolas.
 
 ## Hallazgo F-05 — `$host` en la configuración de Nginx
 - **Título:** Uso de `$host` en `proxy_set_header Host $host`.
@@ -115,7 +117,8 @@ Identificación del alcance → SAST (Semgrep, CodeQL) → detección de secreto
 - **Impacto:** Confidencialidad (baja).
 - **Pasos de validación segura:** `curl -i http://127.0.0.1:3001/ruta-inexistente` y `curl -i http://127.0.0.1:3000/`, buscando `X-Powered-By`.
 - **Corrección:** `70dd82a` — `app.disable('x-powered-by')` y prueba de regresión, **solo en `alerts-api`**. PR #6.
-- **Resultado del reescaneo:** API corregida (prueba 1/5 en verde, [`security_test.png`](../evidence/lab5/security_test.png)). **El frontend sigue abierto:** `app/web-frontend/server.js` no deshabilita la cabecera (sin `app.disable('x-powered-by')` ni `helmet`) y el Nginx endurecido no usa `proxy_hide_header`, así que también se filtra a través del proxy. No hay reescaneo ZAP que lo confirme en ejecución. Corrección propuesta: `app.disable('x-powered-by')` en el frontend o `proxy_hide_header X-Powered-By;` en Nginx.
+- **Resultado del reescaneo:** API corregida (prueba 1/5 en verde, [`security_test.png`](../evidence/lab5/security_test.png)). **El frontend estaba abierto** (`app/web-frontend/server.js` no deshabilitaba la cabecera y el Nginx endurecido no usa `proxy_hide_header`, así que también se filtraba a través del proxy).
+- **Corrección del frontend (8 nov 2026, sin commit aún):** `app.disable('x-powered-by')` y `helmet` en `web-frontend/server.js`. Verificado localmente: la prueba `security-headers.test.js` (4 rutas, 6/6 en verde) y `curl -i http://127.0.0.1:3555/` muestran que la cabecera ya no aparece. Pendiente: un ZAP posterior que lo confirme en el workflow (con el objetivo en `:3000`, ver `SECURITY.md` §2.4).
 
 ## Hallazgo F-07 — Rate limiting posiblemente compartido por IP del proxy
 > **Estado: hipótesis de revisión de código. No fue reproducida ni medida.**
@@ -137,7 +140,7 @@ Identificación del alcance → SAST (Semgrep, CodeQL) → detección de secreto
 - **Efecto colateral:** con el nombre correcto, Semgrep analiza el archivo y marca 2 veces `dependabot-missing-cooldown` (líneas 3 y 7 de `dependabot.yml`). Bajo valor; se corrige añadiendo `cooldown` a cada ecosistema.
 - **Pasos de validación segura:** *Insights → Dependency graph → Dependabot* debe mostrar el estado de los ecosistemas configurados.
 - **Corrección:** el archivo se renombró a `.github/dependabot.yml` (commit `555a33e`, contenido sin cambios).
-- **Resultado del reescaneo:** verificado. Pocos minutos después del renombrado, Dependabot abrió **5 Pull Requests de actualización (#9 a #13)**: 4 de `github_actions` (`checkout` 4 → 7, `upload-artifact` 4 → 7, `setup-python` 5.6.0 → 7.1.0, `setup-node` 4 → 7) y 1 de `npm` (`dotenv` 16.6.1 → 18.0.9). Los 5 pasan 5/5 checks. Siguen abiertos y sin fusionar; son saltos de versión mayor y requieren triage.
+- **Resultado del reescaneo:** verificado. Pocos minutos después del renombrado, Dependabot abrió **5 Pull Requests de actualización (#9 a #13)**: 4 de `github_actions` (`checkout` 4 → 7, `upload-artifact` 4 → 7, `setup-python` 5.6.0 → 7.1.0, `setup-node` 4 → 7) y 1 de `npm` (`dotenv` 16.6.1 → 18.0.9). Los 5 pasan 5/5 checks. Los 5 se fusionaron el 8 nov entre las 17:46 y las 17:51 (triage hecho; el listado de arriba corresponde a antes del merge). Efecto: acciones en v7 y `dotenv` 18.0.9; `npm audit` y las pruebas siguen en verde.
   ![PR abiertos por Dependabot](../evidence/lab5/dependabot_prs_abiertos.png)
 
 ## Hallazgo F-09 — Frontend sin cabeceras de seguridad
@@ -147,10 +150,10 @@ Identificación del alcance → SAST (Semgrep, CodeQL) → detección de secreto
 - **Evidencia minimizada:** [`zap-report.json`](../evidence/ZAP/zap-report.json) (6 nov 2026): CSP (3 instancias), Anti-clickjacking (3), `nosniff` (5), Permissions-Policy (4), COEP/COOP/CORP (3 cada una).
 - **Impacto:** Integridad del cliente (clickjacking) y confidencialidad (efectos de un posible XSS).
 - **Pasos de validación segura:** `curl -i http://127.0.0.1:3000/` y revisar las cabeceras; o repetir el workflow DAST pasivo.
-- **Corrección:** pendiente. Opciones: (a) `helmet()` en `web-frontend/server.js` con una CSP acorde a `app.js` y `styles.css` propios; (b) `add_header` en Nginx para CSP y Permissions-Policy (el endurecido ya cubre `nosniff`, `X-Frame-Options` y `Referrer-Policy`). Las tres cabeceras Cross-Origin son opcionales para esta app.
-- **Resultado del reescaneo:** no aplica; el informe ZAP archivado es el inicial.
+- **Corrección (8 nov 2026, sin commit aún):** opción (a), `helmet` en `web-frontend/server.js` con una CSP propia sin `unsafe-inline` (`default-src 'self'`, `script-src 'self'`, `style-src 'self'`, `frame-ancestors 'none'`, entre otras), `X-Frame-Options: DENY`, COEP `require-corp`, COOP y CORP `same-origin`, `Referrer-Policy: no-referrer` y `Permissions-Policy`. HSTS queda desactivado mientras el despliegue sea HTTP (Lab 4). Detalle y verificación en `SECURITY.md` §2.8. Opción (b), `add_header` en Nginx, sigue siendo una capa adicional posible. Aunque las tres cabeceras Cross-Origin eran opcionales, se añadieron porque `helmet` las incluye sin coste y ZAP las reportaba.
+- **Resultado del reescaneo:** pruebas locales 6/6 y `curl` con todas las cabeceras presentes. No hay ZAP posterior; el archivado es el inicial.
 
-> ⚠️ **PENDIENTE (depende de la corrección): informe ZAP "después"** en `evidence/ZAP/after/` (ver `SECURITY.md` §2.4).
+> ⚠️ **PENDIENTE: informe ZAP "después"** en `evidence/ZAP/after/` (ver `SECURITY.md` §2.4). Ojo: `dast-local.yml` apunta hoy a `:3001` (API); para ver estas correcciones debe escanear `:3000`.
 
 ---
 
@@ -181,9 +184,19 @@ Identificación del alcance → SAST (Semgrep, CodeQL) → detección de secreto
 ![body.json](../evidence/lab5/bodyJson_pentest.png)
 ![Solicitudes y respuestas](../evidence/lab5/resultados_pentests_controlados.png)
 
-> ⚠️ **PENDIENTE: captura de la prueba equivalente al P-02 sobre el commit anterior (`09d876b`)** para demostrar el "antes" (se espera `200` sin clave). Ruta: `evidence/lab5/pentest_before.png`.
->
-> <!-- ![Pentest antes: PATCH sin clave aceptado](../evidence/lab5/pentest_before.png) -->
+### Prueba equivalente antes de la corrección
+
+| ID | Solicitud (sobre el código anterior a `70dd82a`) | Observado | Hora (GMT, cabecera `Date`) |
+|---|---|---|---|
+| A-01 | `GET /health` | `200` `{"status":"ok","service":"alerts-api","database":"ok"}` | n/a |
+| A-02 | `PATCH /api/alerts/alert-004/status`, `{"status":"closed"}`, **sin** `x-api-key` | **`200 OK`**, `alert-004` → `"status":"closed"`, `updated_timestamp` `2026-11-08T22:55:03.786Z`; la respuesta incluye `X-Powered-By: Express` | Dom 08 Nov 2026 22:55:03 |
+| A-03 | Igual, con `x-api-key: incorrecta` | **`200 OK`**, mismo efecto, `updated_timestamp` `2026-11-08T22:56:09.246Z` | 22:56:09 |
+
+La misma solicitud que después devuelve `401` (P-02 y P-03) era aceptada: el control de acceso de F-03 no existía, y `X-Powered-By` (F-06) estaba presente. Las pruebas "antes" se hicieron el 8 nov 2026 (17:55 hora local) en una copia local del repositorio.
+
+![Pentest antes: PATCH sin clave y con clave incorrecta aceptados (200)](../evidence/lab5/pentest_before.png)
+
+> Limitación: la captura no muestra el commit evaluado. La copia usada es una carpeta distinta (`...\Downloads\Security_Fundamentals_Lab5`) y se asume que corresponde a `09d876b`. Para dejarlo demostrado, añadir al registro la salida de `git rev-parse HEAD` de esa carpeta.
 
 ---
 
