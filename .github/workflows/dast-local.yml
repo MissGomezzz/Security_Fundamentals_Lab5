@@ -1,0 +1,60 @@
+name: DAST pasivo - app local en runner
+on:
+  workflow_dispatch:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  zap-local:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: muvautomation_lab3
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci_only_password
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_NAME: muvautomation_lab3
+      DB_USER: postgres
+      DB_PASSWORD: ci_only_password
+      PORT_WEB: 3000
+      PORT_API: 3001
+      API_KEY: ${{ secrets.API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npm run seed
+      - name: Arrancar API y frontend
+        run: |
+          npm start -w alerts-api > /tmp/api.log 2>&1 &
+          npm start -w web-frontend > /tmp/web.log 2>&1 &
+      - name: Esperar a la app
+        run: |
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:3000/api/alerts && exit 0
+            sleep 2
+          done
+          exit 1
+      - name: ZAP baseline (pasivo)
+        run: |
+          mkdir -p reports && chmod 777 reports
+          docker run --rm --network host -v "$PWD/reports:/zap/wrk:rw" \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py -t http://127.0.0.1:3000 -r zap-report.html -J zap-report.json -I || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: informe-zap
+          path: reports/

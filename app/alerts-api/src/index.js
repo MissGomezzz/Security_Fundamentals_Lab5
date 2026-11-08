@@ -3,12 +3,14 @@ const fs = require('node:fs');
 const path = require('node:path');
 const express = require('express');
 const cors = require('cors');
+const { rateLimit } = require('express-rate-limit');
 const morgan = require('morgan');
 const { pool } = require('./db');
 const { requestLogger, writeLog } = require('./logger');
 const { recordAudit, listAudit } = require('../../audit-service');
 
 const app = express();
+app.disable('x-powered-by');
 const port = Number(process.env.PORT_API || 3001);
 const severities = new Set(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']);
 const statuses = new Set(['new', 'in_progress', 'closed']);
@@ -40,6 +42,36 @@ app.use(express.json({ limit: '100kb' }));
 app.use(morgan('combined'));
 app.use(requestLogger);
 
+const apiRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 60,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { error: 'rate_limit_exceeded' }
+});
+
+function requireApiKey(req, res, next) {
+  const expected = process.env.API_KEY;
+
+  if (!expected) {
+    return res.status(503).json({ error: 'api_key_not_configured' });
+  }
+
+  const received = req.get('x-api-key') || '';
+
+  if (
+    received.length !== expected.length ||
+    !crypto.timingSafeEqual(
+      Buffer.from(received),
+      Buffer.from(expected)
+    )
+  ) {
+    return res.status(401).json({ error: 'unauthorized' });
+  }
+
+  return next();
+}
+
 function parsePositiveInteger(value, fallback, maximum) {
   const parsed = Number.parseInt(value, 10);
   if (!Number.isInteger(parsed) || parsed < 0) return fallback;
@@ -61,7 +93,7 @@ function alertPayload(body) {
   };
 }
 
-app.get('/health', async (req, res) => {
+app.get('/health', apiRateLimit, async (req, res) => {
   try {
     await pool.query('SELECT 1');
     res.json({ status: 'ok', service: 'alerts-api', database: 'ok' });
@@ -70,6 +102,8 @@ app.get('/health', async (req, res) => {
     res.status(503).json({ status: 'degraded', service: 'alerts-api', database: 'unavailable' });
   }
 });
+
+app.use('/api', apiRateLimit);
 
 app.get('/api/alerts', async (req, res, next) => {
   try {
@@ -102,7 +136,7 @@ app.get('/api/alerts/:id', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-app.post('/api/alerts', async (req, res, next) => {
+app.post('/api/alerts', requireApiKey, async (req, res, next) => {
   try {
     const alert = alertPayload(req.body);
     if (!alert) return res.status(400).json({ error: 'invalid_alert_payload' });
@@ -115,7 +149,7 @@ app.post('/api/alerts', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-app.patch('/api/alerts/:id/status', async (req, res, next) => {
+app.patch('/api/alerts/:id/status', requireApiKey, async (req, res, next) => {
   try {
     if (!statuses.has(req.body && req.body.status)) return res.status(400).json({ error: 'invalid_status' });
     const result = await pool.query(
@@ -133,7 +167,7 @@ app.patch('/api/alerts/:id/status', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-app.post('/api/alerts/aggregates', async (req, res, next) => {
+app.post('/api/alerts/aggregates', requireApiKey, async (req, res, next) => {
   try {
     const field = req.body && req.body.field;
     if (!tactics.has(field)) return res.status(400).json({ error: 'field_must_be_severity_status_or_tactic' });
@@ -156,7 +190,7 @@ app.post('/api/alerts/aggregates', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-app.get('/api/audit', async (req, res, next) => {
+app.get('/api/audit', requireApiKey, async (req, res, next) => {
   try {
     const limit = parsePositiveInteger(req.query.limit, 100, 500);
     res.json({ data: await listAudit(limit), limit });
