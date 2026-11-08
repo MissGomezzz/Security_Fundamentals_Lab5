@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const express = require('express');
 const cors = require('cors');
+const { rateLimit } = require('express-rate-limit');
 const morgan = require('morgan');
 const { pool } = require('./db');
 const { requestLogger, writeLog } = require('./logger');
@@ -40,6 +41,14 @@ app.use(cors({
 app.use(express.json({ limit: '100kb' }));
 app.use(morgan('combined'));
 app.use(requestLogger);
+
+const apiRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 60,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { error: 'rate_limit_exceeded' }
+});
 
 function requireApiKey(req, res, next) {
   const expected = process.env.API_KEY;
@@ -84,7 +93,7 @@ function alertPayload(body) {
   };
 }
 
-app.get('/health', async (req, res) => {
+app.get('/health', apiRateLimit, async (req, res) => {
   try {
     await pool.query('SELECT 1');
     res.json({ status: 'ok', service: 'alerts-api', database: 'ok' });
@@ -93,6 +102,8 @@ app.get('/health', async (req, res) => {
     res.status(503).json({ status: 'degraded', service: 'alerts-api', database: 'unavailable' });
   }
 });
+
+app.use('/api', apiRateLimit);
 
 app.get('/api/alerts', async (req, res, next) => {
   try {

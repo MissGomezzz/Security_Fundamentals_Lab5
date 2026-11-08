@@ -34,3 +34,10 @@ test('GET /api/audit sin API key devuelve 401', async () => {
   const r = await fetch(`${base}/api/audit`);
   assert.equal(r.status, 401);
 });
+
+test('las rutas de API tienen rate limiting', async () => {
+  const responses = await Promise.all(
+    Array.from({ length: 61 }, () => fetch(`${base}/api/audit`))
+  );
+  assert.equal(responses.at(-1).status, 429);
+});

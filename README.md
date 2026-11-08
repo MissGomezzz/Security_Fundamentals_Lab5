@@ -284,7 +284,7 @@ Estas limitaciones son intencionales y forman parte del Lab 3:
 - HTTP sin cifrar; no usar en producción.
 - Sin autenticación ni autorización.
 - CORS abierto en `alerts-api`.
-- Sin rate limiting ni protección anti-abuso.
+- Rate limiting de la API configurado a 60 solicitudes por minuto y dirección IP; la protección anti-abuso avanzada queda fuera del alcance.
 - API pública con datos ficticios y endpoints de modificación.
 - Logs locales sin pipeline centralizado ni retención configurada.
 - Los placeholders de `.env.example` no son credenciales utilizables.
