@@ -6,7 +6,7 @@ Estado de cada paso de la plantilla del laboratorio y lo que se hizo en este pro
 |---|---|---|---|
 | 1 | Copiar workflow y `docs/` | Hecho | `.github/workflows/seguridad-estatica.yml` y `docs/` (PR #4) |
 | 2 | Habilitar CodeQL (Default setup), Dependabot alerts y secret scanning | Parcial | CodeQL (`javascript-typescript` y `actions`) y Dependabot alerts activos, con resultados. Secret scanning nativo: **no documentado** (se usa Gitleaks) |
-| 3 | Rama de seguridad, PR y revisión de Actions; descargar `resultado-semgrep` | Hecho | Rama `security/lab5-fdsi`; PR #4 a #7. JSON de Semgrep versionados en `evidence/SAST/` |
+| 3 | Rama de seguridad, PR y revisión de Actions; descargar `resultado-semgrep` | Hecho | Rama `security/lab5-fdsi`; PR #4 a #7. JSON de Semgrep versionados en `evidence/SAST/` (antes, tras el PR #5 y reescaneo del 8 nov) |
 | 4 | Revisar la pestaña Security | Hecho | Capturas en `evidence/lab5/` |
 | 5 | DAST contra staging HTTPS autorizado | **Adaptado** | No hay staging: `dast-local.yml` levanta la app **dentro del runner** y ejecuta ZAP baseline contra `127.0.0.1:3000`. No se necesita `STAGING_URL` |
 | 6 | Descargar `informe-zap` y registrarlo | Hecho | Informe inicial en `evidence/ZAP/` y tabla de alertas con triage en [`SECURITY.md`](SECURITY.md) §2.4 |

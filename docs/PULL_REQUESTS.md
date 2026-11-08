@@ -24,7 +24,12 @@ Base URL: <https://github.com/MissGomezzz/Security_Fundamentals_Lab5/pull/N>
 
 **Resultado:** Semgrep y Gitleaks quedan ejecutándose en cada push a `main` y en cada PR. Primer escaneo: 9 hallazgos WARNING; tras el ajuste de SHA (PR #5): 4. Los JSON de ese escaneo se versionaron después, en el PR #6.
 
-**Evidencia:** el equipo decidió **no incluir capturas de las páginas de los PR #4 y #5**. Su contenido queda respaldado por el historial de git (commits `9fe3d60` y `d043d24`, merges `7574354` y `dbe664f`) y por los resultados de Semgrep en `evidence/SAST/`. Si el evaluador exige la captura de un PR de integración, es la única parte de este entregable sin imagen.
+**Evidencia:** el equipo decidió **no incluir capturas de las páginas de los PR #4 y #5**. Su contenido queda respaldado por el historial de git (commits `9fe3d60` y `d043d24`, merges `7574354` y `dbe664f`) y por los resultados de Semgrep en `evidence/SAST/` (`semgrep_before.json` y `semgrep_after_pr5.json`).
+
+> ⚠️ **PENDIENTE (solo si el evaluador exige imagen del PR de integración): capturas de los PR #4 y #5** (título, estado *Merged*, pestañas *Commits*, *Checks* y *Files changed*). Es la única parte de este entregable sin imagen. Rutas: `evidence/lab5/pr4_integracion_merged.png` y `evidence/lab5/pr5_ajuste_sha_merged.png`.
+>
+> <!-- ![PR #4 fusionado](../evidence/lab5/pr4_integracion_merged.png) -->
+> <!-- ![PR #5 fusionado](../evidence/lab5/pr5_ajuste_sha_merged.png) -->
 
 ## PR de remediación — #6 (y complemento #7)
 
@@ -62,7 +67,23 @@ Base URL: <https://github.com/MissGomezzz/Security_Fundamentals_Lab5/pull/N>
 
 **Checklist de seguridad del PR:** [`CHECKLIST_PR.md`](CHECKLIST_PR.md).
 
-⚠️ **PENDIENTE (opcional) — captura del PR #6 ya fusionado.** El PR #6 se capturó solo **antes** del merge (abierto, 7/7 checks). Si se quiere, agregar su estado "Merged" con commits y archivos cambiados como `evidence/lab5/pr6_remediacion_merged.png` y enlazarla aquí. El PR #7 ya tiene captura post-merge.
+> ⚠️ **PENDIENTE (opcional) — captura del PR #6 ya fusionado.** El PR #6 se capturó solo **antes** del merge (abierto, 7/7 checks). Agregar su estado "Merged" con commits y archivos cambiados como `evidence/lab5/pr6_remediacion_merged.png`. El PR #7 ya tiene captura post-merge.
+>
+> <!-- ![PR #6 fusionado](../evidence/lab5/pr6_remediacion_merged.png) -->
+
+## Cambio posterior sin Pull Request: migración a Express 5
+
+Después del PR #7 se hicieron en `main`, **sin PR**, estos cambios (todos del 8 nov 2026):
+
+| Commit | Hora | Cambio |
+|---|---|---|
+| `555a33e` | 13:49 | Renombra `dependatbot.yml` a `dependabot.yml` (F-08) |
+| `7e76984` | 14:10 | Express `^4.21.2` → `^5.3.0` en `alerts-api` y `web-frontend`; `package-lock.json` regenerado; comodín `app.get('/{*splat}')` en el frontend; `semgrep_after.json` sobrescrito con un reescaneo; documentación y capturas |
+| `4f31229` | 14:19 | Ajustes de documentación; se retira la referencia a `evidence/express5/` y las capturas `dependabot_pr14_zap_fallido.png` y `dependabot_prs.png` |
+
+El cambio de Express no pasó por revisión de PR. Se verificó localmente (`npm audit` 0 vulnerabilidades, `npm test` 5/5, ver `SECURITY.md` §2.7) pero no hay captura de CI para `4f31229`. Si se necesita un PR formal de esta remediación, se puede abrir uno retroactivo con la comparación `9968a09...4f31229`.
+
+> ⚠️ **PENDIENTE: PR (retroactivo) o captura de CI de la migración a Express 5.** Ruta: `evidence/lab5/express5_ci_run.png`. Ver `SECURITY.md` §2.7.
 
 ## Pull Requests automáticos de Dependabot (#9 a #13)
 
@@ -81,7 +102,7 @@ Tras renombrar `dependatbot.yml` a `dependabot.yml` (F-08, commit `555a33e`), De
 **Decisión pendiente.** Todos son saltos de versión mayor: leer las notas de cambio y probar antes de fusionar. Los de `github_actions` son la vía natural para mantener las acciones fijadas por SHA (F-04).
 
 ## Pendientes derivados que deberían ir en un PR nuevo
-1. Hacer triage de los 5 PR abiertos por Dependabot (#9 a #13), ver la sección anterior.
+1. Hacer triage de los 5 PR abiertos por Dependabot (#9 a #13), ver la sección anterior. Antes de fusionarlos, tener en cuenta que `main` ya cambió (Express 5, lockfile): los PR de Dependabot parten del estado anterior y pueden requerir rebase.
 2. Fijar por SHA las acciones restantes de `seguridad-estatica.yml` (job `pruebas`) y `dast-local.yml` (F-04).
 3. Configurar `trust proxy` y validar el rate limiting detrás de Nginx (F-07).
 4. Corregir las cabeceras del frontend (F-09) y `X-Powered-By` en el frontend (F-06), y volver a ejecutar ZAP para tener el informe "después".

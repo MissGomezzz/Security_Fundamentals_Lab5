@@ -2,7 +2,7 @@
 
 **Proyecto:** `muvautomation-secure-challenge` — MVP académico de automatización de incidentes (datos ficticios), Secure Product Challenge.
 **Integrantes:** María Belén Quintero Aldana, Ángela Sofía Gómez Valencia.
-**Repositorio / commit:** <https://github.com/MissGomezzz/Security_Fundamentals_Lab5> — línea base `09d876b4ca5e5c8db6af2053852e88e2487763f4` (rama `security/lab5-fdsi`); estado final `main` @ `9968a09` (merge PR #7).
+**Repositorio / commit:** <https://github.com/MissGomezzz/Security_Fundamentals_Lab5> — línea base `09d876b4ca5e5c8db6af2053852e88e2487763f4` (rama `security/lab5-fdsi`); remediaciones fusionadas en `main` @ `9968a09` (merge PR #7); estado final evaluado `main` @ `4f31229` (incluye la migración a Express 5, `7e76984`, hecha sin PR; ver F-02).
 **Entorno autorizado:** API y frontend locales (`127.0.0.1`), PostgreSQL local con datos ficticios y runners efímeros de GitHub Actions. Sin producción ni terceros.
 **Fecha:** pruebas del 6 al 8 de noviembre de 2026 (autorización: viernes 6 de noviembre de 2026).
 
@@ -70,6 +70,7 @@ Identificación del alcance → SAST (Semgrep, CodeQL) → detección de secreto
   ![Dependabot corregido](../evidence/lab5/alertas_fixed_dependatbot.png)
   ![npm audit después](../evidence/lab5/npm_audit_after.png)
 - **Verificación local:** `npm audit` → *found 0 vulnerabilities*. La captura inicial de `npm outdated` quedó sin salida, por lo que no se usa como evidencia de "dependencias al día".
+- **Seguimiento: migración a Express 5 (`7e76984`, 8 nov, sin PR).** El lockfile de `main` @ `4f31229` resuelve `express` 5.3.0, `body-parser` 2.4.0, `qs` 6.17.1 y `proxy-addr` 2.0.8, todos fuera de los rangos vulnerables de F-02. El 8 nov, `npm audit` dio 0 vulnerabilidades y `npm test` 5/5 sobre ese estado. Falta la captura y un run de CI sobre ese commit (ver `SECURITY.md` §2.7). La migración obligó a cambiar el comodín `app.get('*')` del frontend por `app.get('/{*splat}')`.
 
 ## Hallazgo F-03 — Endpoints sin autenticación
 - **Título:** `POST /api/alerts`, `PATCH /api/alerts/:id/status`, `POST /api/alerts/aggregates` y `GET /api/audit` accesibles sin credenciales.
@@ -92,8 +93,9 @@ Identificación del alcance → SAST (Semgrep, CodeQL) → detección de secreto
 - **Impacto:** Integridad de la cadena de suministro del CI.
 - **Pasos de validación segura:** `python evidence/SAST/resumen.py` (ajustando el archivo a leer) o `semgrep scan --config p/owasp-top-ten`. Solo lectura estática.
 - **Corrección:** `d043d24` fija a SHA los pasos de Semgrep y Gitleaks (checkout, setup-python, upload-artifact, gitleaks-action), con el tag como comentario. PR #5.
-- **Resultado del reescaneo:** 0 hallazgos de esta regla en [`semgrep_after.json`](../evidence/SAST/semgrep_after.json) (9 → 4 en total).
-- **Corrección parcial — pendiente:** el commit posterior `70dd82a` añadió el job `pruebas` con `actions/checkout@v4` y `actions/setup-node@v4` (líneas 45–46), y `dast-local.yml` conserva `@v4` en tres pasos (líneas 32, 33, 56). Son referencias mutables que **no** estaban en el escaneo "después" y que Semgrep probablemente marcaría de nuevo. Recomendación: fijarlas a SHA y reejecutar Semgrep.
+- **Resultado del reescaneo (tras el PR #5):** 0 hallazgos de esta regla en [`semgrep_after_pr5.json`](../evidence/SAST/semgrep_after_pr5.json) (9 → 4 en total).
+- **Reescaneo posterior (8 nov 2026, [`semgrep_after.json`](../evidence/SAST/semgrep_after.json)):** la regla vuelve a aparecer **5 veces**, tal como se anticipó: `seguridad-estatica.yml` líneas 45 y 46 (job `pruebas`) y `dast-local.yml` líneas 32, 33 y 56. Confirma que la corrección es parcial.
+- **Corrección parcial — pendiente:** el commit posterior `70dd82a` añadió el job `pruebas` con `actions/checkout@v4` y `actions/setup-node@v4` (líneas 45–46), y `dast-local.yml` conserva `@v4` en tres pasos (líneas 32, 33, 56). Son referencias mutables que no estaban en el escaneo posterior al PR #5 y que el reescaneo del 8 nov confirmó. Recomendación: fijarlas a SHA y reejecutar Semgrep.
 
 ## Hallazgo F-05 — `$host` en la configuración de Nginx
 - **Título:** Uso de `$host` en `proxy_set_header Host $host`.
@@ -132,6 +134,7 @@ Identificación del alcance → SAST (Semgrep, CodeQL) → detección de secreto
 - **Severidad y justificación:** Baja. Las alertas de seguridad de Dependabot funcionan sin ese archivo (por eso se generaron las 5 alertas), pero **las actualizaciones de versión semanales (`npm` y `github-actions`) no se ejecutaban**, y con ellas tampoco la actualización automática de las acciones fijadas por SHA de F-04.
 - **Evidencia minimizada:** captura del alcance con la pestaña `dependantbot.yml` ([`rama_sha_security_md_alcance.png`](../evidence/lab5/rama_sha_security_md_alcance.png)). En el historial de git los commits de dependencias son manuales (`541cc20`).
 - **Impacto:** Mantenimiento; deja dependencias sin actualizar entre alertas.
+- **Efecto colateral:** con el nombre correcto, Semgrep analiza el archivo y marca 2 veces `dependabot-missing-cooldown` (líneas 3 y 7 de `dependabot.yml`). Bajo valor; se corrige añadiendo `cooldown` a cada ecosistema.
 - **Pasos de validación segura:** *Insights → Dependency graph → Dependabot* debe mostrar el estado de los ecosistemas configurados.
 - **Corrección:** el archivo se renombró a `.github/dependabot.yml` (commit `555a33e`, contenido sin cambios).
 - **Resultado del reescaneo:** verificado. Pocos minutos después del renombrado, Dependabot abrió **5 Pull Requests de actualización (#9 a #13)**: 4 de `github_actions` (`checkout` 4 → 7, `upload-artifact` 4 → 7, `setup-python` 5.6.0 → 7.1.0, `setup-node` 4 → 7) y 1 de `npm` (`dotenv` 16.6.1 → 18.0.9). Los 5 pasan 5/5 checks. Siguen abiertos y sin fusionar; son saltos de versión mayor y requieren triage.
@@ -146,6 +149,8 @@ Identificación del alcance → SAST (Semgrep, CodeQL) → detección de secreto
 - **Pasos de validación segura:** `curl -i http://127.0.0.1:3000/` y revisar las cabeceras; o repetir el workflow DAST pasivo.
 - **Corrección:** pendiente. Opciones: (a) `helmet()` en `web-frontend/server.js` con una CSP acorde a `app.js` y `styles.css` propios; (b) `add_header` en Nginx para CSP y Permissions-Policy (el endurecido ya cubre `nosniff`, `X-Frame-Options` y `Referrer-Policy`). Las tres cabeceras Cross-Origin son opcionales para esta app.
 - **Resultado del reescaneo:** no aplica; el informe ZAP archivado es el inicial.
+
+> ⚠️ **PENDIENTE (depende de la corrección): informe ZAP "después"** en `evidence/ZAP/after/` (ver `SECURITY.md` §2.4).
 
 ---
 
@@ -176,7 +181,9 @@ Identificación del alcance → SAST (Semgrep, CodeQL) → detección de secreto
 ![body.json](../evidence/lab5/bodyJson_pentest.png)
 ![Solicitudes y respuestas](../evidence/lab5/resultados_pentests_controlados.png)
 
-⚠️ **Pendiente:** captura de la prueba equivalente al P-02 sobre el commit anterior (`09d876b`) para demostrar el "antes". Ruta sugerida: `evidence/lab5/pentest_before.png`.
+> ⚠️ **PENDIENTE: captura de la prueba equivalente al P-02 sobre el commit anterior (`09d876b`)** para demostrar el "antes" (se espera `200` sin clave). Ruta: `evidence/lab5/pentest_before.png`.
+>
+> <!-- ![Pentest antes: PATCH sin clave aceptado](../evidence/lab5/pentest_before.png) -->
 
 ---
 

@@ -449,15 +449,15 @@ Se integró un pipeline de seguridad en GitHub y se recorrió el ciclo detectar,
 
 | Indicador | Antes | Después |
 |---|---|---|
-| Semgrep | 9 hallazgos | 4 |
+| Semgrep | 9 hallazgos | 4 tras el PR #5; 11 accionables en el reescaneo del 8 nov (ver `SECURITY.md` §2.1) |
 | CodeQL | 7 alertas High en `main` | 0 abiertas |
 | Dependabot | 5 abiertas (1 Critical, 1 High, 3 Moderate) | 0 abiertas |
 | Escritura sin API key | Aceptada | 401 |
 | Checks del PR | CodeQL en rojo | 7/7 en verde |
-| `npm audit` | 3 vulnerabilidades | 0 |
+| `npm audit` | 3 vulnerabilidades | 0 (también con Express 5.3.0) |
 | OWASP ZAP (informe inicial) | 0 High, 2 Medium, 6 Low, 2 Info (cabeceras del frontend) | Sin reescaneo; ver F-09 |
 
-Los checks usan `|| true` (Semgrep) y `-I` (ZAP): un check verde **no** significa aplicación segura. Riesgos residuales y pendientes (cabeceras del frontend, `X-Powered-By` en el frontend, `trust proxy`, triage de los 5 PR de Dependabot) en el [informe final](docs/INFORME_FINAL.md#6-riesgos-residuales-y-decisiones).
+Los checks usan `|| true` (Semgrep) y `-I` (ZAP): un check verde **no** significa aplicación segura. Riesgos residuales y pendientes (cabeceras del frontend, `X-Powered-By` en el frontend, `trust proxy`, migración a Express 5 sin PR ni captura de CI, `cooldown` y `.semgrepignore`, triage de los 5 PR de Dependabot) en el [informe final](docs/INFORME_FINAL.md#6-riesgos-residuales-y-decisiones).
 
 ## Pipeline
 
