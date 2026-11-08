@@ -1,6 +1,7 @@
 const path = require('node:path');
 const http = require('node:http');
 const express = require('express');
+const { rateLimit } = require('express-rate-limit');
 const morgan = require('morgan');
 
 const app = express();
@@ -24,6 +25,13 @@ function proxyApiRequest(req, res, next) {
 }
 
 app.use(morgan('combined'));
+app.use(rateLimit({
+  windowMs: 60 * 1000,
+  limit: 60,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { error: 'rate_limit_exceeded' }
+}));
 app.use(proxyApiRequest);
 app.use(express.static(publicDirectory));
 app.get('*', (req, res) => res.sendFile(path.join(publicDirectory, 'index.html')));
