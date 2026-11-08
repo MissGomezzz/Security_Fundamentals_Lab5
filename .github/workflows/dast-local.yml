@@ -53,7 +53,7 @@ jobs:
           docker run --rm --network host -v "$PWD/reports:/zap/wrk:rw" \
             ghcr.io/zaproxy/zaproxy:stable \
             zap-baseline.py -t http://127.0.0.1:3000 -r zap-report.html -J zap-report.json -I || true
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: informe-zap
