@@ -64,8 +64,46 @@ Base URL: <https://github.com/MissGomezzz/Security_Fundamentals_Lab5/pull/N>
 
 ⚠️ **PENDIENTE (opcional) — captura del PR #6 ya fusionado.** El PR #6 se capturó solo **antes** del merge (abierto, 7/7 checks). Si se quiere, agregar su estado "Merged" con commits y archivos cambiados como `evidence/lab5/pr6_remediacion_merged.png` y enlazarla aquí. El PR #7 ya tiene captura post-merge.
 
+## Pull Requests automáticos de Dependabot (#9 a #14)
+
+Tras renombrar `dependatbot.yml` a `dependabot.yml` (F-08, commit `555a33e`), Dependabot empezó a abrir PR de actualización de versión. Son PR de **mantenimiento**, no de remediación de los hallazgos del laboratorio, y a la fecha de la captura siguen **abiertos y sin fusionar**.
+
+| PR | Título | Etiquetas | Checks |
+|---|---|---|---|
+| [#9](https://github.com/MissGomezzz/Security_Fundamentals_Lab5/pull/9) | `chore(deps): bump actions/checkout from 4 to 7` | dependencies, github_actions | 5/5 |
+| [#10](https://github.com/MissGomezzz/Security_Fundamentals_Lab5/pull/10) | `chore(deps): bump actions/upload-artifact from 4 to 7` | dependencies, github_actions | 5/5 |
+| [#11](https://github.com/MissGomezzz/Security_Fundamentals_Lab5/pull/11) | `chore(deps): bump actions/setup-python from 5.6.0 to 7.1.0` | dependencies, github_actions | 5/5 |
+| [#12](https://github.com/MissGomezzz/Security_Fundamentals_Lab5/pull/12) | `chore(deps): bump actions/setup-node from 4 to 7` | dependencies, github_actions | 5/5 |
+| [#13](https://github.com/MissGomezzz/Security_Fundamentals_Lab5/pull/13) | `chore(deps): bump dotenv from 16.6.1 to 18.0.9` | dependencies, javascript | 5/5 |
+| [#14](https://github.com/MissGomezzz/Security_Fundamentals_Lab5/pull/14) | `chore(deps): bump express from 4.22.3 to 5.3.0` | dependencies, javascript | **4/5** (falla DAST/ZAP) |
+
+![PR abiertos por Dependabot](../evidence/lab5/dependabot_prs.png)
+
+**PR #14 (`express` 4.22.3 → 5.3.0): por qué falla.** Falla el check *DAST pasivo - app local en runner / zap-local* (la captura muestra la ejecución #15 del workflow). El paso *Esperar a la app* agota 30 intentos de `curl` a `127.0.0.1:3000` (1 min 1 s) con `Could not connect to server`: el frontend no arranca. Reproducido en la aplicación real: con Express 5.3.0 sin tocar el código, `node app/web-frontend/server.js` termina con `Missing parameter name at index 1: *`, porque el comodín `app.get('*', ...)` ya no es válido en Express 5 (`path-to-regexp` v8). El log del runner no está en la captura. Efectos colaterales vistos en las anotaciones: advertencia de Node.js 20 obsoleto para `checkout@v4`, `setup-node@v4` y `upload-artifact@v4`, y *No files were found ... reports/* porque ZAP nunca corrió.
+
+![Check fallido del PR #14](../evidence/lab5/dependabot_pr14_zap_fallido.png)
+
+### Migración a Express 5: hecha en la copia de trabajo, pendiente de PR
+
+**Respuesta corta: sí, la aplicación sigue funcionando con Express 5**, con un único cambio de código.
+
+| Archivo | Cambio |
+|---|---|
+| `app/web-frontend/server.js` | `app.get('*', ...)` → `app.get('/{*splat}', ...)` (con un comentario del motivo) |
+| `app/alerts-api/package.json` | `"express": "^4.21.2"` → `"^5.3.0"` |
+| `app/web-frontend/package.json` | `"express": "^4.21.2"` → `"^5.3.0"` |
+| `package-lock.json` | Express 5.3.0 y sus dependencias (`router`, `path-to-regexp` v8, etc.), 13 paquetes añadidos y 6 eliminados |
+
+`alerts-api` no necesitó cambios de código: no usa comodines, y las rutas, el middleware (`cors`, `morgan`, `express-rate-limit` 8, `express.json`) y el manejador de errores se comportan igual. `req.body` ausente (petición sin cuerpo) ya estaba protegido con `req.body && ...`.
+
+**Cómo se validó** (detalle en [`evidence/express5/README.md`](../evidence/express5/README.md)): una prueba de humo de 31 comprobaciones ejecutada con el **mismo script** sobre Express 4.22.3 (línea base) y sobre Express 5.3.0, con los dos servicios corriendo y una PostgreSQL 16 desechable en Docker (eliminada al terminar). Resultado: 28 comprobaciones idénticas y 3 líneas distintas, ambas explicadas (filas acumuladas de `audit_log`; `Content-Type` de `/app.js` y `/styles.css` pasa a `text/javascript; charset=utf-8` y `text/css; charset=utf-8`). Además: `npm test` 5/5, `npm audit` 0 vulnerabilidades, `node --check` sin errores.
+
+**Para cerrarlo:** hacer commit del cambio y abrir un PR (por ejemplo, `chore: migrate to Express 5`) o subirlo a la rama del PR #14; verificar que el check *zap-local* pasa en CI (el único paso no reproducido localmente es el de GitHub Actions con Node 20 y Ubuntu). Al fusionar, el PR #14 de Dependabot queda redundante. **Aún no se hizo commit ni PR.**
+
+**Decisión pendiente sobre los demás.** Los PR #9 a #12 (acciones de GitHub) y #13 (`dotenv` 16 → 18) pasan 5/5 y son saltos de versión mayor: leer las notas de cambio antes de fusionar. Los de `github_actions` son la vía natural para mantener las acciones fijadas por SHA (F-04), y la advertencia de Node 20 en el job refuerza actualizarlas. Los PR #9 a #14 son además la evidencia de que F-08 quedó resuelto.
+
 ## Pendientes derivados que deberían ir en un PR nuevo
-1. Hacer commit del renombrado `.github/dependatbot.yml` → `.github/dependabot.yml` (F-08, ya hecho en la copia local) y de la actualización de `package-lock.json` pendiente en el árbol de trabajo (`pg` 8.23.0 → 8.23.1 y sus subpaquetes).
+1. Hacer commit y PR de la migración a Express 5 (ver sección anterior) y hacer triage de los otros 5 PR de Dependabot (#9 a #13).
 2. Fijar por SHA las acciones restantes de `seguridad-estatica.yml` (job `pruebas`) y `dast-local.yml` (F-04).
 3. Configurar `trust proxy` y validar el rate limiting detrás de Nginx (F-07).
 4. Corregir las cabeceras del frontend (F-09) y `X-Powered-By` en el frontend (F-06), y volver a ejecutar ZAP para tener el informe "después".

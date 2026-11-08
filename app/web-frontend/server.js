@@ -34,7 +34,8 @@ app.use(rateLimit({
 }));
 app.use(proxyApiRequest);
 app.use(express.static(publicDirectory));
-app.get('*', (req, res) => res.sendFile(path.join(publicDirectory, 'index.html')));
+// Express 5 (path-to-regexp v8) no admite el comodín '*' sin nombre.
+app.get('/{*splat}', (req, res) => res.sendFile(path.join(publicDirectory, 'index.html')));
 
 if (require.main === module) {
   app.listen(port, () => console.log(`web-frontend listening on port ${port}`));

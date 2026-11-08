@@ -7,7 +7,7 @@
 **Fecha:** pruebas del 6 al 8 de noviembre de 2026 (autorización: viernes 6 de noviembre de 2026).
 
 ## Resumen ejecutivo
-Se integró un pipeline de seguridad (Semgrep, CodeQL, Gitleaks, Dependabot, ZAP baseline y pruebas de regresión) y se recorrió el ciclo completo: detectar, validar, corregir y reescanear. Se registraron **9 hallazgos**: **5 corregidos y verificados** (F-01, F-02, F-03, F-04 en los workflows de Semgrep/Gitleaks, y F-06 en la API), 1 corregido en la copia local a falta de commit (F-08) y 3 abiertos (F-05 aceptado, F-07 sin validar y F-09 por cabeceras del frontend). F-04 y F-06 conservan una parte abierta.
+Se integró un pipeline de seguridad (Semgrep, CodeQL, Gitleaks, Dependabot, ZAP baseline y pruebas de regresión) y se recorrió el ciclo completo: detectar, validar, corregir y reescanear. Se registraron **9 hallazgos**: **6 corregidos y verificados** (F-01, F-02, F-03, F-04 en los workflows de Semgrep/Gitleaks, F-06 en la API y F-08) y 3 abiertos (F-05 aceptado, F-07 sin validar y F-09 por cabeceras del frontend). F-04 y F-06 conservan una parte abierta.
 
 Los tres riesgos principales fueron:
 1. **Dependencias vulnerables (F-02, crítico).** `proxy-addr` (IP spoofing, Critical), `body-parser` (DoS, High) y `qs` (3 DoS/bypass, Moderate) llegaban de forma transitiva con Express. Importa porque `proxy-addr` decide qué IP se considera la del cliente, base de cualquier control por IP. **Corregido** actualizando el lockfile; Dependabot pasó de 5 alertas abiertas a 0.
@@ -30,7 +30,7 @@ Identificación del alcance → SAST (Semgrep, CodeQL) → detección de secreto
 | F-05 | `$host` no validado en `proxy_set_header Host` | Semgrep | Baja | Abierto (aceptado) |
 | F-06 | Cabecera `X-Powered-By` | Revisión, prueba y ZAP | Baja | Corregido en la API; abierto en el frontend |
 | F-07 | Rate limiting posiblemente compartido por IP del proxy | Revisión de código | Media | Abierto (sin validar) |
-| F-08 | Configuración de Dependabot con nombre de archivo erróneo | Revisión de proceso | Baja | Corregido localmente, pendiente de commit |
+| F-08 | Configuración de Dependabot con nombre de archivo erróneo | Revisión de proceso | Baja | Corregido y verificado |
 | F-09 | Frontend sin CSP, anti-clickjacking, `nosniff` ni cabeceras Cross-Origin | OWASP ZAP | Media | Abierto |
 
 ---
@@ -133,8 +133,9 @@ Identificación del alcance → SAST (Semgrep, CodeQL) → detección de secreto
 - **Evidencia minimizada:** captura del alcance con la pestaña `dependantbot.yml` ([`rama_sha_security_md_alcance.png`](../evidence/lab5/rama_sha_security_md_alcance.png)). En el historial de git los commits de dependencias son manuales (`541cc20`).
 - **Impacto:** Mantenimiento; deja dependencias sin actualizar entre alertas.
 - **Pasos de validación segura:** *Insights → Dependency graph → Dependabot* debe mostrar el estado de los ecosistemas configurados.
-- **Corrección:** el archivo ya fue renombrado a `.github/dependabot.yml` (contenido sin cambios) en la copia de trabajo. **Falta hacer commit y push**; hasta entonces, GitHub no lo ve.
-- **Resultado del reescaneo:** pendiente de verificar en *Insights → Dependency graph → Dependabot* tras el push.
+- **Corrección:** el archivo se renombró a `.github/dependabot.yml` (commit `555a33e`, contenido sin cambios).
+- **Resultado del reescaneo:** verificado. Pocos minutos después del renombrado, Dependabot abrió **6 Pull Requests de actualización (#9 a #14)**: 4 de `github_actions` (`checkout` 4 → 7, `upload-artifact` 4 → 7, `setup-python` 5.6.0 → 7.1.0, `setup-node` 4 → 7) y 2 de `npm` (`dotenv` 16.6.1 → 18.0.9 y `express` 4.22.3 → 5.3.0). Cinco pasan 5/5 checks; el de `express` 4 → 5 (#14) falla el check DAST (*zap-local*, paso *Esperar a la app*: `curl` no logra conectar a `127.0.0.1:3000` tras 30 intentos porque el frontend no arranca). La causa, reproducida en la aplicación real, es que Express 5 ya no acepta el comodín `app.get('*')` de `web-frontend/server.js` (`Missing parameter name at index 1: *`). **Se migró a Express 5** cambiando el comodín a `app.get('/{*splat}', ...)` y actualizando `express` a `^5.3.0` en ambos servicios; una prueba de humo de 31 comprobaciones dio resultados equivalentes a Express 4 (ver [`evidence/express5/`](../evidence/express5/README.md)). Cambio pendiente de commit y PR; los demás PR del bot siguen abiertos y sin fusionar y requieren triage.
+  ![PR abiertos por Dependabot](../evidence/lab5/dependabot_prs.png)
 
 ## Hallazgo F-09 — Frontend sin cabeceras de seguridad
 - **Título:** El servidor del frontend no envía CSP, anti-clickjacking, `X-Content-Type-Options` ni otras cabeceras de seguridad.
@@ -184,4 +185,4 @@ Identificación del alcance → SAST (Semgrep, CodeQL) → detección de secreto
 
 **Qué omitieron.** Ninguna herramienta detectó que las rutas de escritura no tenían autenticación: esa clase de fallo (control de acceso) requiere entender la intención de la aplicación y se halló por revisión y prueba manual. Tampoco detectaron la errata del archivo de Dependabot (F-08) ni el posible cupo compartido por IP (F-07), que surgen de leer la arquitectura completa. ZAP en modo pasivo solo vio el frontend (5 URL, ninguna de `/api`), por lo que no pudo evaluar la API, la autenticación ni el abuso de lógica; solo aportó hallazgos de cabeceras.
 
-**Cómo integrar seguridad en el ciclo de desarrollo.** (1) Mantener los checks en cada PR y volverlos bloqueantes tras el triage (hoy `|| true`). (2) Activar de verdad Dependabot (F-08, falta el commit del renombrado) y fijar acciones por SHA con actualización automática. (3) Convertir cada hallazgo corregido en una prueba de regresión, como ya se hizo con 401 y 429. (4) Hacer revisión de control de acceso en cada endpoint nuevo, porque las herramientas automáticas no la cubren. (5) Guardar siempre el artefacto de cada escaneo en `evidence/`, no solo en Actions, que caduca (el informe ZAP se archivó en `evidence/ZAP/`). (6) Darle a ZAP la lista de rutas de la API (por ejemplo con una definición OpenAPI) para que el DAST llegue a `/api`.
+**Cómo integrar seguridad en el ciclo de desarrollo.** (1) Mantener los checks en cada PR y volverlos bloqueantes tras el triage (hoy `|| true`). (2) Mantener Dependabot activo (F-08, ya verificado con 6 PR del bot) y fijar acciones por SHA con actualización automática, haciendo triage de los PR que abre, sobre todo los de versión mayor como `express` 4 → 5. (3) Convertir cada hallazgo corregido en una prueba de regresión, como ya se hizo con 401 y 429. (4) Hacer revisión de control de acceso en cada endpoint nuevo, porque las herramientas automáticas no la cubren. (5) Guardar siempre el artefacto de cada escaneo en `evidence/`, no solo en Actions, que caduca (el informe ZAP se archivó en `evidence/ZAP/`). (6) Darle a ZAP la lista de rutas de la API (por ejemplo con una definición OpenAPI) para que el DAST llegue a `/api`.

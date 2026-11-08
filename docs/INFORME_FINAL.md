@@ -7,7 +7,7 @@
 **Estado final evaluado:** `main` @ `9968a09` (merge del PR #7)
 
 ## 1. Resumen
-Se agregó al proyecto un pipeline de seguridad integrado a GitHub (Semgrep, CodeQL, Gitleaks, Dependabot, OWASP ZAP baseline y pruebas de regresión) y se usó para detectar, corregir y reescanear vulnerabilidades en una aplicación con datos ficticios. Se registraron 9 hallazgos: 5 corregidos y verificados, 1 corregido en local a falta de commit (F-08) y 3 abiertos (F-05 aceptado, F-07 sin validar, F-09 cabeceras del frontend). F-04 y F-06 conservan una parte abierta. El indicador más claro de mejora es que las alertas pasaron de **5 abiertas a 0 en Dependabot** y de **7 a 0 en CodeQL**, y que el pipeline del PR quedó con **7 de 7 checks en verde**.
+Se agregó al proyecto un pipeline de seguridad integrado a GitHub (Semgrep, CodeQL, Gitleaks, Dependabot, OWASP ZAP baseline y pruebas de regresión) y se usó para detectar, corregir y reescanear vulnerabilidades en una aplicación con datos ficticios. Se registraron 9 hallazgos: 6 corregidos y verificados (incluye F-08) y 3 abiertos (F-05 aceptado, F-07 sin validar, F-09 cabeceras del frontend). F-04 y F-06 conservan una parte abierta. El indicador más claro de mejora es que las alertas pasaron de **5 abiertas a 0 en Dependabot** y de **7 a 0 en CodeQL**, y que el pipeline del PR quedó con **7 de 7 checks en verde**.
 
 ## 2. Resultados por entregable
 
@@ -16,7 +16,7 @@ Se agregó al proyecto un pipeline de seguridad integrado a GitHub (Semgrep, Cod
 | Evidencia de Semgrep | Completo (JSON antes/después). Falta captura del job (opcional) | [`evidence/SAST/`](../evidence/SAST/), `SECURITY.md` §2.1 |
 | Evidencia de CodeQL | Completo | `evidence/lab5/hallazgos_CodeQL.png`, `hallazgos_fixed_CodeQL.png` |
 | Evidencia de Gitleaks / Secret Scanning | Completo (Gitleaks: *No leaks detected*) | `evidence/lab5/gitleaks_log.png`, `SECURITY.md` §2.3 |
-| Evidencia de Dependabot | Completo, con `npm audit` posterior | `alertas_iniciales_dependatbot.png`, `alertas_fixed_dependatbot.png`, `npm_audit_y_outdated.png`, `npm_audit_after.png` |
+| Evidencia de Dependabot | Completo: alertas antes/después, `npm audit` posterior y los 6 PR de actualización que abrió el bot | `alertas_iniciales_dependatbot.png`, `alertas_fixed_dependatbot.png`, `npm_audit_y_outdated.png`, `npm_audit_after.png`, `dependabot_prs.png` |
 | Reporte de OWASP ZAP | Completo (informe inicial archivado); sin reescaneo | [`evidence/ZAP/`](../evidence/ZAP/), `SECURITY.md` §2.4 |
 | Registro del pentest controlado | Completo, sin la captura "antes" | `REPORTE_HALLAZGOS.md`, `bodyJson_pentest.png`, `resultados_pentests_controlados.png` |
 | Reporte de vulnerabilidades | Completo | [`REPORTE_HALLAZGOS.md`](REPORTE_HALLAZGOS.md) |
@@ -56,9 +56,10 @@ La lista exacta de capturas y archivos que faltan está en [`evidence/lab5/READM
 3. **Las herramientas no sustituyen la revisión.** Ninguna señaló la falta de autenticación en los endpoints de escritura; se halló leyendo el código y probándolo. Los falsos negativos de este laboratorio son de lógica de acceso, no de sintaxis.
 4. **Un corrector puede crear un riesgo nuevo.** El rate limiting que cerró F-01 puede aplicarse sobre la IP del proxy (F-07, sin validar), de modo que un solo cliente consuma el cupo de todos. Debe medirse antes de darlo por bueno.
 5. **El verde del pipeline engaña.** `|| true` en Semgrep y `-I` en ZAP significan que los checks pasan aunque haya hallazgos. Hoy el CI documenta, pero no bloquea.
-6. **Los controles de proceso fallan en silencio.** Un archivo de Dependabot mal nombrado (F-08) deja desactivadas las actualizaciones de versión sin ningún aviso, y las acciones sin fijar por SHA reaparecieron en el job `pruebas` (F-04) después de haberlas corregido.
+6. **Los controles de proceso fallan en silencio.** Un archivo de Dependabot mal nombrado (F-08) dejó desactivadas las actualizaciones de versión sin ningún aviso; al corregirlo, el bot abrió 6 PR en minutos (`dependabot_prs.png`). Las acciones sin fijar por SHA reaparecieron en el job `pruebas` (F-04) después de haberlas corregido.
 7. **Una corrección parcial parece completa.** `X-Powered-By` se desactivó en la API pero no en el frontend (F-06), y ZAP lo ve justamente en el frontend. Cada corrección debe comprobarse en todos los servicios que comparten el patrón.
 8. **El DAST solo ve lo que alcanza.** ZAP recorrió 5 URL del frontend y ninguna de `/api`; sus 10 alertas son de cabeceras. Una app con API necesita darle a ZAP las rutas de la API para que el DAST aporte algo más que cabeceras.
+9. **Dependabot encontró un problema de compatibilidad antes que producción.** El PR de `express` 4 → 5 rompió el arranque del frontend y lo detectó el propio workflow DAST. Se comprobó con una prueba de humo comparativa (31 comprobaciones sobre Express 4 y 5) que, con un cambio de una línea, la aplicación funciona igual. Conclusión de proceso: los saltos de versión mayor se prueban con la app corriendo, no solo con las pruebas unitarias.
 
 ## 6. Riesgos residuales y decisiones
 
@@ -66,7 +67,7 @@ La lista exacta de capturas y archivos que faltan está en [`evidence/lab5/READM
 |---|---|---|
 | F-05 | `$host` sin validar en Nginx | Aceptado para el laboratorio; corregir con `server_name` explícito |
 | F-07 | Rate limit posiblemente compartido por IP del proxy | Abierto: validar y configurar `trust proxy` |
-| F-08 | Dependabot sin actualizaciones de versión | Archivo renombrado en local; **falta commit y push** |
+| F-08 | Dependabot sin actualizaciones de versión | **Corregido y verificado** (`555a33e`). Nuevo trabajo: triage de los 6 PR abiertos por el bot (#9 a #14), `express` 4 → 5 (#14) falló el DAST porque Express 5 no admite el comodín `app.get('*')`; se migró y validó en local (`evidence/express5/`), **falta commit y PR**; quedan #9 a #13 |
 | F-09 | Frontend sin CSP, anti-clickjacking, `nosniff` | Abierto: `helmet` o `add_header` en Nginx, y reescaneo con ZAP |
 | F-06 (parcial) | `X-Powered-By` en el frontend | Abierto: `app.disable('x-powered-by')` o `proxy_hide_header` |
 | F-04 (parcial) | Acciones `@v4` en `pruebas` y `dast-local.yml` | Abierto: fijar por SHA |
@@ -86,7 +87,7 @@ La lista exacta de capturas y archivos que faltan está en [`evidence/lab5/READM
 
 ## 8. Referencias internas
 - [`SECURITY.md`](SECURITY.md) — evidencia por herramienta y pentest
-- [`REPORTE_HALLAZGOS.md`](REPORTE_HALLAZGOS.md) — detalle de F-01 a F-08
+- [`REPORTE_HALLAZGOS.md`](REPORTE_HALLAZGOS.md) — detalle de F-01 a F-09
 - [`PULL_REQUESTS.md`](PULL_REQUESTS.md) — PR de integración y de remediación
 - [`CHECKLIST_PR.md`](CHECKLIST_PR.md) — checklist del PR
 - [`../risk-register.md`](../risk-register.md) — registro de riesgos (H1–H18)

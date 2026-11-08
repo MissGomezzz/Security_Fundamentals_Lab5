@@ -24,5 +24,5 @@ Estado de cada paso de la plantilla del laboratorio y lo que se hizo en este pro
 - `|| true` en Semgrep y `-I` en ZAP evitan que el laboratorio se bloquee: el estado verde **no** significa aplicación segura. Pasar a control estricto cuando haya triage.
 - Si se usa Gitleaks en una organización, puede requerirse `GITLEAKS_LICENSE`.
 - No subir informes con datos sensibles a repositorios públicos.
-- El archivo de Dependabot debe llamarse `.github/dependabot.yml`. En este repositorio se llamaba `dependatbot.yml` (F-08); ya está renombrado en la copia local y falta el commit.
+- El archivo de Dependabot debe llamarse `.github/dependabot.yml`. En este repositorio se llamaba `dependatbot.yml` (F-08); se renombró (`555a33e`) y Dependabot ya abrió 6 PR de actualización (#9 a #14), ver `evidence/lab5/dependabot_prs.png`.
 - No se añade un segundo workflow de CodeQL mientras se use Default setup.
