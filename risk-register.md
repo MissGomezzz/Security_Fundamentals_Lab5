@@ -25,3 +25,24 @@ La evaluación inicial identificó riesgos asociados a la configuración del sit
 | H12 — Evidencia de retest incompleta | Sin resultados comparables antes y después, no es posible demostrar que las restricciones de red y los controles de la API funcionan. | Guardar resultados reales de Nmap, estado de UFW y pruebas `curl`, con fecha, objetivo y contexto de ejecución. | Parcialmente mitigado: existe evidencia real de Nmap, UFW, PostgreSQL, cabeceras, ruta oculta, rate limiting y API; CORS desplegado y HTTPS continúan pendientes. |
 
 ---
+
+## Riesgos del Laboratorio 5 (SAST, SCA, DAST y pentest)
+
+Detalle en [`docs/REPORTE_HALLAZGOS.md`](docs/REPORTE_HALLAZGOS.md) y evidencia en [`docs/SECURITY.md`](docs/SECURITY.md).
+
+| ID | Amenaza STRIDE | Descripción | Estado | Evidencia | Acción / Justificación |
+|----|-----------------|-------------|--------|-----------|--------------------------|
+| H13 (F-01) | Denial of Service | Rutas con acceso a base de datos sin rate limiting (CodeQL, 7 alertas High) | Mitigado | `evidence/lab5/hallazgos_CodeQL.png`, `hallazgos_fixed_CodeQL.png` | `express-rate-limit` 60 req/min en API y frontend (PR #6, #7). CodeQL: 0 abiertas |
+| H14 (F-02) | Denial of Service / Spoofing | `proxy-addr` (Critical), `body-parser` (High) y `qs` (Moderate x3) vulnerables | Mitigado | `evidence/lab5/alertas_iniciales_dependatbot.png`, `alertas_fixed_dependatbot.png` | Lockfile actualizado (`541cc20`). Dependabot: 0 abiertas. Falta captura de `npm audit` posterior |
+| H15 (F-03) | Spoofing / Tampering / Elevation of Privilege | Endpoints de escritura y auditoría sin autenticación (limitación de Lab 3) | Mitigado | `evidence/lab5/resultados_pentests_controlados.png`, `security_test.png` | API key con `timingSafeEqual` (`70dd82a`). Pentest: 401, 401, 200. Residual: clave única sin rotación; lecturas públicas por diseño |
+| H16 (F-04) | Tampering (cadena de suministro) | Acciones de GitHub con tag mutable | Parcial | `evidence/SAST/semgrep_before.json`, `semgrep_after.json` | Fijadas por SHA en Semgrep y Gitleaks (`d043d24`). Quedan `@v4` en el job `pruebas` y en `dast-local.yml` |
+| H17 (F-05) | Spoofing | `$host` sin validar en `proxy_set_header Host` (Semgrep `request-host-used`) | Aceptado | `evidence/SAST/semgrep_after.json` | Bajo impacto: la app no construye URLs desde `Host`. Mitigación: `server_name` explícito |
+| H18 (F-07) | Denial of Service | Rate limiting posiblemente compartido por la IP del proxy (sin `trust proxy`) | Abierto (sin validar) | — | Hipótesis por revisión de código; validar y configurar `trust proxy` |
+| H19 (F-08) | — (proceso) | Configuración de Dependabot con nombre `dependatbot.yml`: sin actualizaciones de versión | Corregido en local (falta commit) | `evidence/lab5/rama_sha_security_md_alcance.png` | Archivo renombrado a `.github/dependabot.yml`; hacer commit y push |
+| H20 (F-06) | Information Disclosure | Cabecera `X-Powered-By: Express` | Parcial | `evidence/lab5/security_test.png`, `evidence/ZAP/zap-report.json` | Desactivada en la API (`70dd82a`, con prueba). Sigue en el frontend: ZAP la detectó y `web-frontend/server.js` no la deshabilita |
+| H21 (F-09) | Tampering / Information Disclosure | El frontend no envía CSP, anti-clickjacking, `nosniff` ni Permissions-Policy (ZAP: 2 Medium, 6 Low) | Abierto | `evidence/ZAP/zap-report.html`, `zap-report.json` | `helmet` en el frontend o `add_header` en Nginx; reescanear. Nginx endurecido ya añade `nosniff`, `X-Frame-Options` y `Referrer-Policy` |
+| H22 | — | El informe ZAP archivado es el inicial y no alcanzó `/api` | Abierto | `evidence/ZAP/zap.yaml` | Reejecutar tras corregir y ampliar el alcance con las rutas de la API |
+
+H8 (CORS desplegado) y H1/H4 (HTTPS) del laboratorio anterior siguen como estaban.
+
+---

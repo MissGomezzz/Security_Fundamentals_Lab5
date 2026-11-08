@@ -1,12 +1,28 @@
 # Integración al repositorio
 
-1. Copie `.github/workflows/seguridad-estatica.yml` y la carpeta `docs/` a la raíz del proyecto, respetando las rutas.
-2. En GitHub vaya a **Settings → Security / Advanced Security** y habilite lo disponible: CodeQL **Default setup**, Dependabot alerts y secret scanning. La disponibilidad varía según visibilidad y plan; no añada un segundo workflow CodeQL si usa Default setup.
-3. Haga un commit en una rama `security/lab-fsi`, abra un Pull Request y revise **Actions**. Descargue `resultado-semgrep`. Si Gitleaks requiere licencia por estar en una organización, documente la limitación y use la alternativa GitHub secret scanning o CLI.
-4. Revise la pestaña **Security**, si su repositorio tiene acceso a las funcionalidades. No asuma que las alertas siempre estarán disponibles.
-5. Solo si controla un staging HTTPS: configure la variable de repositorio `STAGING_URL`, compruebe permisos y ejecute manualmente **Actions → DAST pasivo - staging autorizado → Run workflow**. El pipeline **no verifica la titularidad del dominio**: es su responsabilidad autorizarlo. No configure endpoints de terceros o producción.
-6. Descargue `informe-zap` y registre los resultados en `docs/SECURITY.md`.
-7. Cree al menos un Pull Request de remediación y vuelva a ejecutar el análisis; documente antes y después.
-8. Agregue en el `README.md` un enlace relativo a `[Informe de seguridad](docs/SECURITY.md)` y el estado del pipeline (opcional: badge de workflow).
+Estado de cada paso de la plantilla del laboratorio y lo que se hizo en este proyecto.
 
-**Notas:** `|| true` en el trabajo de Semgrep y el baseline ZAP impide bloquear el primer laboratorio; el estado verde NO significa aplicación segura. Adapte reglas y cambie a un control estricto cuando haya triage. No suba reportes con datos sensibles a repositorios públicos.
+| # | Paso de la plantilla | Estado | Qué se hizo |
+|---|---|---|---|
+| 1 | Copiar workflow y `docs/` | Hecho | `.github/workflows/seguridad-estatica.yml` y `docs/` (PR #4) |
+| 2 | Habilitar CodeQL (Default setup), Dependabot alerts y secret scanning | Parcial | CodeQL (`javascript-typescript` y `actions`) y Dependabot alerts activos, con resultados. Secret scanning nativo: **no documentado** (se usa Gitleaks) |
+| 3 | Rama de seguridad, PR y revisión de Actions; descargar `resultado-semgrep` | Hecho | Rama `security/lab5-fdsi`; PR #4 a #7. JSON de Semgrep versionados en `evidence/SAST/` |
+| 4 | Revisar la pestaña Security | Hecho | Capturas en `evidence/lab5/` |
+| 5 | DAST contra staging HTTPS autorizado | **Adaptado** | No hay staging: `dast-local.yml` levanta la app **dentro del runner** y ejecuta ZAP baseline contra `127.0.0.1:3000`. No se necesita `STAGING_URL` |
+| 6 | Descargar `informe-zap` y registrarlo | Hecho | Informe inicial en `evidence/ZAP/` y tabla de alertas con triage en [`SECURITY.md`](SECURITY.md) §2.4 |
+| 7 | Al menos un PR de remediación y reescaneo | Hecho | PR #6 y #7. Antes/después en [`SECURITY.md`](SECURITY.md) §4 |
+| 8 | Enlace al informe en el `README.md` | Hecho | Sección *Laboratorio 5* del README |
+
+## Cómo se reproduce
+1. Hacer fork o clon y dejar que GitHub active CodeQL (*Settings → Advanced Security → Code scanning → Default setup*) y Dependabot alerts.
+2. Definir el secreto de repositorio `API_KEY` (*Settings → Secrets and variables → Actions*). El workflow DAST y las pruebas lo usan; **no** va en el repositorio.
+3. Abrir un PR desde `security/lab5-fdsi`; deben ejecutarse Semgrep, Gitleaks, pruebas de regresión, CodeQL y ZAP.
+4. Descargar `resultado-semgrep` e `informe-zap` desde *Actions → run → Artifacts* y guardarlos en `evidence/`.
+5. Localmente: `npm ci`, copiar `.env.example` a `.env` con valores propios, `npm test -w alerts-api`.
+
+## Cosas a tener presentes
+- `|| true` en Semgrep y `-I` en ZAP evitan que el laboratorio se bloquee: el estado verde **no** significa aplicación segura. Pasar a control estricto cuando haya triage.
+- Si se usa Gitleaks en una organización, puede requerirse `GITLEAKS_LICENSE`.
+- No subir informes con datos sensibles a repositorios públicos.
+- El archivo de Dependabot debe llamarse `.github/dependabot.yml`. En este repositorio se llamaba `dependatbot.yml` (F-08); ya está renombrado en la copia local y falta el commit.
+- No se añade un segundo workflow de CodeQL mientras se use Default setup.

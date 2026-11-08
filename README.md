@@ -50,6 +50,8 @@ app/
 nginx/                  # configuración base y hardened
  diagrams/              # diagrama Lucidchart
  evidence/              # evidencia Red Team, Blue Team y retest
+docs/                   # SECURITY.md, REPORTE_HALLAZGOS.md, PULL_REQUESTS.md, INFORME_FINAL.md, CHECKLIST_PR.md
+.github/workflows/      # seguridad-estatica.yml (Semgrep, Gitleaks, pruebas) y dast-local.yml (ZAP)
 risk-register.md
 ```
 
@@ -124,6 +126,7 @@ La plantilla versionada está en [.env.example](.env.example). No colocar secret
 | `DB_PASSWORD` | Placeholder local; nunca subir un valor real |
 | `PORT_WEB` | Puerto del frontend, por defecto 3000 |
 | `PORT_API` | Puerto del API, por defecto 3001 |
+| `API_KEY` | Clave para rutas de escritura y auditoría (cabecera `x-api-key`). Sin ella la API responde 503 en esas rutas. Nunca subir un valor real |
 
 ## Despliegue en Ubuntu Server
 
@@ -280,10 +283,10 @@ No se incluyen contraseñas, tokens, llaves privadas ni secretos en estas captur
 Estas limitaciones son intencionales y forman parte del Lab 3:
 
 - HTTP sin cifrar; no usar en producción.
-- Sin autenticación ni autorización.
+- Las rutas de escritura y auditoría exigen API key desde el Laboratorio 5; las rutas de lectura de alertas siguen siendo públicas por diseño.
 - El endpoint de API observado a través de Nginx todavía responde con `Access-Control-Allow-Origin: *`; la política CORS restringida del repositorio no quedó demostrada en el despliegue de la VM.
 - La limitación de solicitudes sí está configurada y fue observada en el retest, pero no sustituye autenticación ni una protección anti-abuso completa.
-- API pública con datos ficticios y endpoints de modificación.
+- API pública con datos ficticios; los endpoints de modificación requieren API key.
 - Logs locales sin pipeline centralizado ni retención configurada.
 - Los placeholders de `.env.example` no son credenciales utilizables.
 
@@ -425,3 +428,43 @@ Antes de compartir logs, PCAP, IP, hostnames o usuarios con una herramienta de I
 
 
 ---
+
+---
+
+# Laboratorio 5 — Seguridad en el ciclo de desarrollo
+
+Se integró un pipeline de seguridad en GitHub y se recorrió el ciclo detectar, corregir y reescanear. **Informe completo: [`docs/INFORME_FINAL.md`](docs/INFORME_FINAL.md).**
+
+| Documento | Contenido |
+|---|---|
+| [`docs/SECURITY.md`](docs/SECURITY.md) | Evidencia por herramienta (Semgrep, CodeQL, Gitleaks, Dependabot, ZAP), antes/después y pentest |
+| [`docs/REPORTE_HALLAZGOS.md`](docs/REPORTE_HALLAZGOS.md) | Reporte de vulnerabilidades F-01 a F-08 y registro del pentest controlado |
+| [`docs/PULL_REQUESTS.md`](docs/PULL_REQUESTS.md) | PR de integración (#4, #5) y de remediación (#6, #7) |
+| [`docs/CHECKLIST_PR.md`](docs/CHECKLIST_PR.md) | Checklist de seguridad del PR |
+| [`docs/README_INTEGRACION.md`](docs/README_INTEGRACION.md) | Cómo se integró y se reproduce el pipeline |
+| [`evidence/lab5/README.md`](evidence/lab5/README.md) | Índice de capturas y lista de evidencias pendientes |
+| [`risk-register.md`](risk-register.md) | Registro de riesgos, incluidos H13–H21 de este laboratorio |
+
+## Resultados
+
+| Indicador | Antes | Después |
+|---|---|---|
+| Semgrep | 9 hallazgos | 4 |
+| CodeQL | 7 alertas High en `main` | 0 abiertas |
+| Dependabot | 5 abiertas (1 Critical, 1 High, 3 Moderate) | 0 abiertas |
+| Escritura sin API key | Aceptada | 401 |
+| Checks del PR | CodeQL en rojo | 7/7 en verde |
+| `npm audit` | 3 vulnerabilidades | 0 |
+| OWASP ZAP (informe inicial) | 0 High, 2 Medium, 6 Low, 2 Info (cabeceras del frontend) | Sin reescaneo; ver F-09 |
+
+Los checks usan `|| true` (Semgrep) y `-I` (ZAP): un check verde **no** significa aplicación segura. Riesgos residuales y pendientes (cabeceras del frontend, `X-Powered-By` en el frontend, `trust proxy`, commit de `dependabot.yml`) en el [informe final](docs/INFORME_FINAL.md#6-riesgos-residuales-y-decisiones).
+
+## Pipeline
+
+| Workflow | Disparador | Qué ejecuta |
+|---|---|---|
+| [`seguridad-estatica.yml`](.github/workflows/seguridad-estatica.yml) | push a `main`, PR, manual | Semgrep, Gitleaks y pruebas de regresión (`npm test -w alerts-api`) |
+| [`dast-local.yml`](.github/workflows/dast-local.yml) | PR, manual | ZAP baseline pasivo contra la app local del runner |
+| CodeQL (Default setup) | push y PR | `javascript-typescript` y `actions` |
+
+Para ejecutar las pruebas localmente: `npm ci` y `npm test -w alerts-api` (la suite fija su propia `API_KEY` de prueba).
