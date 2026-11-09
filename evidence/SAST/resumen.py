@@ -2,7 +2,7 @@
 
 Uso:  python evidence/SAST/resumen.py [archivo.json]
 Sin argumento lee semgrep_after.json (misma carpeta que este script).
-Archivos: semgrep_before.json, semgrep_after_pr5.json, semgrep_after.json.
+Archivos: semgrep_before.json, semgrep_after.json, semgrep_intermedio_8nov.json, semgrep_final.json.
 """
 import collections
 import json

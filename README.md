@@ -443,21 +443,20 @@ Se integró un pipeline de seguridad en GitHub y se recorrió el ciclo detectar,
 | [`docs/CHECKLIST_PR.md`](docs/CHECKLIST_PR.md) | Checklist de seguridad del PR |
 | [`docs/README_INTEGRACION.md`](docs/README_INTEGRACION.md) | Cómo se integró y se reproduce el pipeline |
 | [`evidence/lab5/README.md`](evidence/lab5/README.md) | Índice de capturas y lista de evidencias pendientes |
-| [`risk-register.md`](risk-register.md) | Registro de riesgos, incluidos H13–H21 de este laboratorio |
+| [`risk-register.md`](risk-register.md) | Registro de riesgos, incluidos H13–H20 de este laboratorio |
 
 ## Resultados
 
 | Indicador | Antes | Después |
 |---|---|---|
-| Semgrep | 9 hallazgos | 4 tras el PR #5; 11 accionables en el reescaneo del 8 nov (ver `SECURITY.md` §2.1). Remediación posterior sin commit, pendiente de reescaneo |
+| Semgrep | 9 hallazgos | 4 tras el PR #5; 48 en un reescaneo intermedio (11 accionables); **4 en el final** (2 de Nginx aceptados y 2 de `cooldown`). Ver `SECURITY.md` 2.1 |
 | CodeQL | 7 alertas High en `main` | 0 abiertas |
 | Dependabot | 5 abiertas (1 Critical, 1 High, 3 Moderate) | 0 abiertas |
 | Escritura sin API key | Aceptada | 401 |
 | Checks del PR | CodeQL en rojo | 7/7 en verde |
 | `npm audit` | 3 vulnerabilidades | 0 (también con Express 5.3.0) |
-| OWASP ZAP (informe inicial) | 0 High, 2 Medium, 6 Low, 2 Info (cabeceras del frontend) | Sin reescaneo en CI. Cabeceras corregidas en el código con `helmet` (sin commit); ver `SECURITY.md` §2.8 |
+| OWASP ZAP (informe inicial) | 0 High, 2 Medium, 6 Low, 2 Info (cabeceras del frontend) | 0 High, 0 Medium, 0 Low, 2 Info (informe posterior del 8 nov, tras `helmet`). Ver `SECURITY.md` 2.4 y 2.8 |
 
-Los checks usan `|| true` (Semgrep) y `-I` (ZAP): un check verde **no** significa aplicación segura. Riesgos residuales y pendientes (commit y PR de la remediación de F-04, F-06 y F-09, ZAP posterior sobre el frontend, `trust proxy`, migración a Express 5 sin PR ni captura de CI y `cooldown` en Dependabot) en el [informe final](docs/INFORME_FINAL.md#6-riesgos-residuales-y-decisiones).
 
 ## Pipeline
 
